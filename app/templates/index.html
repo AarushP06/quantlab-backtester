@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quantlab backtester</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; color: #1d2b36; background: #f5f7fa; margin: 0; }
+    main { max-width: 1050px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { margin-bottom: .25rem; }
+    p { color: #53616b; }
+    form, .panel { background: white; border: 1px solid #d8e0e6; border-radius: 10px; padding: 1.25rem; margin: 1.25rem 0; }
+    form { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; }
+    label { display: grid; gap: .35rem; font-weight: 600; }
+    select, input, button { font: inherit; padding: .55rem .7rem; border: 1px solid #abb9c5; border-radius: 6px; }
+    button { background: #143e63; color: white; border-color: #143e63; cursor: pointer; }
+    .error { color: #9d2424; font-weight: 600; }
+    .chart { width: 100%; height: auto; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th, td { padding: .6rem .7rem; border-bottom: 1px solid #e4e9ed; text-align: right; }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+    thead { background: #eef3f7; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Quantlab backtester</h1>
+  <p>Compare a strategy with buy-and-hold on the cached daily-price universe. Signals trade at the next bar's open.</p>
+  <form method="get" action="/">
+    <label>Strategy
+      <select name="strategy">
+        {% for key, item in strategies.items() %}
+        <option value="{{ key }}" {% if values.strategy == key %}selected{% endif %}>{{ item[0] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Start date
+      <input type="date" name="start" value="{{ values.start }}" min="{{ min_date }}" max="{{ max_date }}" required>
+    </label>
+    <label>End date
+      <input type="date" name="end" value="{{ values.end }}" min="{{ min_date }}" max="{{ max_date }}" required>
+    </label>
+    <label>Chart cost level
+      <select name="cost">
+        <option value="0" {% if values.cost == '0' %}selected{% endif %}>0 bps</option>
+        <option value="5" {% if values.cost == '5' %}selected{% endif %}>5 bps (default)</option>
+      </select>
+    </label>
+    <button type="submit">Run backtest</button>
+  </form>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  {% if chart %}
+  <section class="panel">
+    <h2>Equity curve · {{ chart_cost }} bps</h2>
+    <img class="chart" src="data:image/png;base64,{{ chart }}" alt="Equity curves for the chosen strategy and buy-and-hold baseline">
+  </section>
+  <section class="panel">
+    <h2>Metrics</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Costs</th><th>Strategy</th><th>Total return</th><th>CAGR</th><th>Sharpe</th><th>Max drawdown</th><th>Turnover / yr</th><th>Costs paid</th><th>Trades</th></tr></thead>
+        <tbody>
+          {% for row in metrics %}
+          <tr><td>{{ row.cost }}</td><td>{{ row.strategy }}</td><td>{{ row['return'] }}</td><td>{{ row.cagr }}</td><td>{{ row.sharpe }}</td><td>{{ row.drawdown }}</td><td>{{ row.turnover }}</td><td>{{ row.costs }}</td><td>{{ row.trades }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+</main>
+</body>
+</html>
