@@ -8,7 +8,8 @@ capital size and make multi-asset portfolios natural.
 THE CONTRACT — the single most important rule in this codebase:
 
     generate_weights(history) receives ONLY data up to and including bar t.
-    The weights it returns are executed at bar t+1's open.
+    The weights it returns are executed at bar t+1's open. None means
+    leave existing shares untouched, without placing an order.
 
 The engine enforces the slicing, so a strategy physically cannot see the
 future. Do not work around this by loading data inside a strategy.
@@ -37,8 +38,8 @@ class Strategy(ABC):
         return type(self).__name__
 
     @abstractmethod
-    def generate_weights(self, history: pd.DataFrame) -> pd.Series:
-        """Return target weights given all data up to and including now.
+    def generate_weights(self, history: pd.DataFrame) -> pd.Series | None:
+        """Return target weights or None given data up to and including now.
 
         Args:
             history: DataFrame indexed by timestamp, with a column MultiIndex
@@ -49,7 +50,8 @@ class Strategy(ABC):
             Series indexed by symbol holding target weights. Missing symbols
             are treated as 0.0. The engine does not normalise for you — if
             you return weights summing to 3.0 you are 3x levered, which the
-            engine will honour and the cost model will punish.
+            engine will honour and the cost model will punish. Return None to
+            keep current share counts unchanged without trading.
         """
         raise NotImplementedError
 

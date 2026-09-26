@@ -8,12 +8,26 @@ from ..core.strategy import Strategy
 
 
 class BuyAndHold(Strategy):
-    """Equal weight across all symbols, rebalanced never (weights are constant,
-    so the engine only trades on the first bar and on drift-free days does
-    nothing)."""
+    """Start equally weighted; optionally reset target weights later.
+
+    Decisions on a bar execute at the next bar's open. Monthly rebalancing is
+    signaled on the first observed bar of each new calendar month.
+    """
 
     warmup = 1
 
-    def generate_weights(self, history: pd.DataFrame) -> pd.Series:
+    def __init__(self, rebalance: str = "never") -> None:
+        if rebalance not in {"never", "monthly", "daily"}:
+            raise ValueError("rebalance must be 'never', 'monthly', or 'daily'")
+        self.rebalance = rebalance
+
+    def generate_weights(self, history: pd.DataFrame) -> pd.Series | None:
+        if len(history) > 1:
+            if self.rebalance == "never":
+                return None
+            if self.rebalance == "monthly":
+                current, previous = history.index[-1], history.index[-2]
+                if current.to_period("M") == previous.to_period("M"):
+                    return None
         symbols = history["close"].columns
         return pd.Series(1.0 / len(symbols), index=symbols)

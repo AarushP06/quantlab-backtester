@@ -165,7 +165,7 @@ class BacktestEngine:
             if i + 1 < len(idx) and i + 1 >= strategy.warmup:
                 history = self.prices.iloc[: i + 1]  # inclusive slice, no future
                 weights = strategy.generate_weights(history)
-                pending = self._clean_weights(weights)
+                pending = None if weights is None else self._clean_weights(weights)
 
         return BacktestResult(
             equity=pd.Series(equity_curve, index=idx, name="equity"),
