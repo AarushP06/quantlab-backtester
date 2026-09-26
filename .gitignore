@@ -3,3 +3,4 @@ __pycache__/
 data/cache/
 *.parquet
 .pytest_cache/
+scratch.py
