@@ -111,3 +111,17 @@ def test_fetch_reports_empty_download(monkeypatch, tmp_path):
 
     with pytest.raises(ValueError, match="AAA.*BBB"):
         loader.fetch(["AAA", "BBB"], "2024-01-02", "2024-01-05")
+
+
+def test_fetch_keeps_pre_listing_gaps_as_nan(monkeypatch, tmp_path):
+    monkeypatch.setattr(loader, "CACHE", tmp_path / "cache")
+    response = bars(["AAA", "LATE"]).astype(float)
+    response.loc[DATES[0], pd.IndexSlice[:, "LATE"]] = float("nan")
+    mock_download(monkeypatch, response)
+
+    result = loader.fetch(["AAA", "LATE"], "2024-01-02", "2024-01-05")
+
+    assert result.index.equals(DATES)
+    assert pd.isna(result.loc[DATES[0], ("close", "LATE")])
+    assert result.loc[DATES[1], ("close", "LATE")] == 103
+    assert pd.read_parquet(loader.CACHE / "LATE.parquet").index.min() == DATES[1]

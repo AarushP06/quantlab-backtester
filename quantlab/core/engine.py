@@ -119,6 +119,7 @@ class BacktestEngine:
 
         cash = self.initial_cash
         shares = pd.Series(0.0, index=self.symbols)
+        last_prices = pd.Series(np.nan, index=self.symbols)
         pending: pd.Series | None = None  # weights decided on the previous bar
 
         equity_curve: list[float] = []
@@ -127,11 +128,14 @@ class BacktestEngine:
         costs_paid = 0.0
 
         for i, ts in enumerate(idx):
+            px = opens.loc[ts]
+            # A missing quote cannot be traded. Keep the last observed price
+            # for valuing shares already held rather than marking them at zero.
+            open_mark = px.where(np.isfinite(px)).fillna(last_prices)
             # ---- 1. execute yesterday's decision at today's open ----------
             if pending is not None:
-                px = opens.loc[ts]
                 # Mark at the open to size orders against current equity.
-                equity_at_open = cash + float((shares * px).fillna(0.0).sum())
+                equity_at_open = cash + float((shares * open_mark).fillna(0.0).sum())
                 target_shares = self._weights_to_shares(pending, px, equity_at_open)
                 delta = (target_shares - shares).fillna(0.0)
 
@@ -157,7 +161,9 @@ class BacktestEngine:
 
             # ---- 2. mark to market on today's close -----------------------
             close_px = closes.loc[ts]
-            equity = cash + float((shares * close_px).fillna(0.0).sum())
+            close_mark = close_px.where(np.isfinite(close_px)).fillna(open_mark)
+            equity = cash + float((shares * close_mark).fillna(0.0).sum())
+            last_prices = close_mark
             equity_curve.append(equity)
             position_log.append(shares.copy())
 
