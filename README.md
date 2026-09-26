@@ -223,4 +223,15 @@ python -m flask --app app.wsgi:app run
 
 Open `http://127.0.0.1:5000/` for the form. The app reads the committed Parquet file and fails at startup if it is missing. To regenerate the snapshot deliberately, run `python scripts/build_dataset.py` or supply `--start YYYY-MM-DD --end YYYY-MM-DD` (inclusive end), inspect its printed validation issues, and review the changed Parquet before committing it.
 
+### Static viewer
+
+[`scripts/precompute_results.py`](scripts/precompute_results.py) runs the fixed 20/50 crossover, fixed 6-month/top-5 momentum strategy, and all four buy-and-hold rebalance modes on the full snapshot and each of the 19 one-year test folds, at 0 and 5 bps. It writes a manifest plus one JSON file per strategy and cost level to [`static/data/`](static/data/). The static momentum preset is **fixed 6/5**; it is not the train-selected momentum parameter sweep reported above. Regenerate and review these committed JSON files whenever the Parquet snapshot or strategy code changes:
+
+```bash
+python scripts/precompute_results.py
+python -m http.server 8000 --directory static
+```
+
+Open `http://127.0.0.1:8000/`. [`static/index.html`](static/index.html) loads only the generated JSON and Chart.js from a CDN. Its strategy, baseline, cost, and period selectors change which saved series and metrics are displayed; the page does no backtesting and needs no Python server in deployment. [`vercel.json`](vercel.json) serves the `static/` directory as the Vercel site without a build command. The Flask form remains available for local exploration of arbitrary date ranges; its requests still run backtests against the cached Parquet.
+
 For a local container, run `docker build -t quantlab .` and `docker run --rm -p 10000:10000 quantlab`. The [Render Blueprint](render.yaml) uses the same Dockerfile. The image copies the committed snapshot and does not call yfinance during build or requests.
