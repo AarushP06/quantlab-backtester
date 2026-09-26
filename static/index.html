@@ -3,228 +3,107 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:,">
-  <title>Quantlab · precomputed backtests</title>
-  <style>
-    :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; color: #183047; background: #f3f6f8; }
-    * { box-sizing: border-box; }
-    body { margin: 0; }
-    main { max-width: 1200px; margin: auto; padding: 2rem 1rem 4rem; }
-    header { margin-bottom: 1.5rem; }
-    h1 { margin: 0 0 .35rem; font-size: clamp(1.8rem, 4vw, 2.6rem); }
-    h2 { font-size: 1.15rem; margin: 0 0 1rem; }
-    p { line-height: 1.55; color: #52667a; margin: .5rem 0; }
-    .eyebrow { color: #146b82; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; font-size: .75rem; }
-    .panel { background: #fff; border: 1px solid #dbe4e9; border-radius: 12px; padding: 1.35rem; margin: 1rem 0; box-shadow: 0 2px 10px #17334d08; }
-    .controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
-    label { display: grid; gap: .4rem; font-size: .85rem; font-weight: 700; color: #324f66; }
-    select { width: 100%; font: inherit; font-weight: 500; color: #183047; padding: .65rem .75rem; border: 1px solid #a9bdca; border-radius: 7px; background: #fff; }
-    #status { min-height: 1.5rem; }
-    .chart-box { position: relative; height: min(55vh, 500px); min-height: 300px; }
-    .table-wrap { overflow-x: auto; }
-    table { border-collapse: collapse; width: 100%; font-size: .9rem; white-space: nowrap; }
-    th, td { padding: .62rem .75rem; border-bottom: 1px solid #e4ebef; text-align: right; }
-    th:first-child, td:first-child { text-align: left; }
-    th { color: #456278; background: #f4f8fa; font-weight: 700; }
-    tbody tr:hover { background: #f7fafb; }
-    .note { font-size: .85rem; }
-    @media (max-width: 760px) { .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 480px) { .controls { grid-template-columns: 1fr; } }
-  </style>
+  <link rel="stylesheet" href="styles.css">
+  <title>Historical simulation · Quantlab</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
-  <script defer>
-    let manifest;
-    let chart;
-    let renderToken = 0;
-    const cache = new Map();
-    const fields = [
-      ["total_return", "Total return", "percent"],
-      ["cagr", "CAGR", "percent"],
-      ["sharpe", "Sharpe", "number"],
-      ["max_drawdown", "Max drawdown", "percent"],
-      ["turnover", "Turnover / year", "number"],
-      ["costs_paid", "Costs paid", "money"],
-      ["trades", "Trades", "integer"]
-    ];
-
-    function format(value, kind) {
-      if (value === null || value === undefined || !Number.isFinite(value)) return "—";
-      if (kind === "percent") return `${(value * 100).toFixed(2)}%`;
-      if (kind === "money") return new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"}).format(value);
-      if (kind === "integer") return new Intl.NumberFormat("en-US").format(value);
-      return value.toFixed(2);
-    }
-
-    function cell(row, value, tag = "td") {
-      const element = document.createElement(tag);
-      element.textContent = value;
-      row.appendChild(element);
-    }
-
-    async function loadJson(path) {
-      if (!cache.has(path)) {
-        cache.set(path, fetch(path).then(response => {
-          if (!response.ok) throw new Error(`Could not load ${path} (${response.status})`);
-          return response.json();
-        }));
-      }
-      return cache.get(path);
-    }
-
-    function fillSelect(id, entries) {
-      const select = document.getElementById(id);
-      for (const entry of entries) {
-        const option = document.createElement("option");
-        option.value = entry.id;
-        option.textContent = entry.label;
-        select.appendChild(option);
-      }
-    }
-
-    function drawMetrics(strategy, baseline, strategyLabel, baselineLabel) {
-      const body = document.getElementById("metrics-body");
-      body.replaceChildren();
-      for (const [key, label, kind] of fields) {
-        const row = document.createElement("tr");
-        cell(row, label, "th");
-        cell(row, format(strategy.metrics[key], kind));
-        cell(row, format(baseline.metrics[key], kind));
-        body.appendChild(row);
-      }
-      document.getElementById("strategy-heading").textContent = strategyLabel;
-      document.getElementById("baseline-heading").textContent = baselineLabel;
-    }
-
-    function drawFolds(strategyResults, baselineResults) {
-      const body = document.getElementById("folds-body");
-      body.replaceChildren();
-      for (const period of manifest.periods.filter(item => item.id !== "full")) {
-        const strategy = strategyResults.periods[period.id].metrics;
-        const baseline = baselineResults.periods[period.id].metrics;
-        const row = document.createElement("tr");
-        cell(row, period.id);
-        cell(row, format(strategy.cagr, "percent"));
-        cell(row, format(baseline.cagr, "percent"));
-        cell(row, format((strategy.cagr - baseline.cagr) * 100, "number") + " pp");
-        cell(row, format(strategy.sharpe, "number"));
-        cell(row, format(baseline.sharpe, "number"));
-        cell(row, format(strategy.max_drawdown, "percent"));
-        cell(row, format(baseline.max_drawdown, "percent"));
-        body.appendChild(row);
-      }
-    }
-
-    function drawChart(strategy, baseline, strategyLabel, baselineLabel) {
-      if (chart) chart.destroy();
-      chart = new Chart(document.getElementById("equity-chart"), {
-        type: "line",
-        data: {
-          labels: strategy.dates,
-          datasets: [
-            {label: strategyLabel, data: strategy.equity, borderColor: "#126c91", backgroundColor: "#126c91", pointRadius: 0, borderWidth: 2, tension: 0},
-            {label: baselineLabel, data: baseline.equity, borderColor: "#de7b28", backgroundColor: "#de7b28", pointRadius: 0, borderWidth: 2, tension: 0}
-          ]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false, animation: false,
-          interaction: {mode: "index", intersect: false},
-          plugins: {legend: {position: "bottom"}},
-          scales: {
-            x: {ticks: {maxTicksLimit: 9, maxRotation: 0}},
-            y: {ticks: {callback: value => `$${new Intl.NumberFormat("en-US", {notation: "compact"}).format(value)}`}}
-          }
-        }
-      });
-    }
-
-    async function render() {
-      const token = ++renderToken;
-      const strategyId = document.getElementById("strategy").value;
-      const baselineId = document.getElementById("baseline").value;
-      const cost = document.getElementById("cost").value;
-      const period = document.getElementById("period").value;
-      const strategySpec = manifest.strategies.find(item => item.id === strategyId);
-      const baselineSpec = manifest.strategies.find(item => item.id === baselineId);
-      const status = document.getElementById("status");
-      status.textContent = "Loading precomputed results…";
-      try {
-        const [strategyResults, baselineResults] = await Promise.all([
-          loadJson(strategySpec.files[cost]), loadJson(baselineSpec.files[cost])
-        ]);
-        if (token !== renderToken) return;
-        const strategy = strategyResults.periods[period];
-        const baseline = baselineResults.periods[period];
-        if (!strategy || !baseline) throw new Error("Results for this period are unavailable.");
-        drawChart(strategy, baseline, strategySpec.label, baselineSpec.label);
-        drawMetrics(strategy, baseline, strategySpec.label, baselineSpec.label);
-        drawFolds(strategyResults, baselineResults);
-        status.textContent = `${manifest.bars.toLocaleString()} source bars · ${manifest.symbols} symbols · ${manifest.first_date} to ${manifest.last_date}. Results are precomputed.`;
-      } catch (error) {
-        if (token === renderToken) status.textContent = `Unable to display results: ${error.message}`;
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      const status = document.getElementById("status");
-      try {
-        manifest = await loadJson("data/manifest.json");
-        fillSelect("strategy", manifest.strategies);
-        fillSelect("baseline", manifest.strategies.filter(item => manifest.baseline_options.includes(item.id)));
-        fillSelect("cost", manifest.costs);
-        fillSelect("period", manifest.periods);
-        document.getElementById("strategy").value = "ma_20_50";
-        document.getElementById("baseline").value = manifest.default_baseline;
-        document.getElementById("cost").value = "5";
-        for (const id of ["strategy", "baseline", "cost", "period"]) {
-          document.getElementById(id).addEventListener("change", render);
-        }
-        await render();
-      } catch (error) {
-        status.textContent = `Unable to load precomputed data: ${error.message}`;
-      }
-    });
-  </script>
+  <script src="app.js" defer></script>
 </head>
 <body>
   <main>
-    <header>
-      <div class="eyebrow">Quantlab / static results</div>
-      <h1>Backtests, with the comparison in view</h1>
-      <p>Explore saved daily equity curves and metrics. Signals use information through bar t and execute at bar t+1's open. Changing a control reads another JSON result; it does not run a backtest.</p>
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Quantlab / historical backtests</div>
+        <h1>Historical simulation</h1>
+        <p>Compare a strategy with buy-and-hold across saved market history. Signals use each bar's information and execute at the next bar's open. These controls select precomputed results; no backtest runs in the browser.</p>
+      </div>
+      <div class="hero-meta">2005–2026 adjusted US equity data<br>20 selected large-cap symbols<br>0 and 5 bps trading costs</div>
     </header>
 
-    <section class="panel controls" aria-label="Result selectors">
-      <label>Strategy<select id="strategy"></select></label>
-      <label>Baseline<select id="baseline"></select></label>
-      <label>Cost level<select id="cost"></select></label>
-      <label>Period<select id="period"></select></label>
-    </section>
-    <p id="status" role="status" aria-live="polite">Loading precomputed results…</p>
+    <aside class="notice" role="note">Past performance does not predict future returns. This universe contains 20 large caps selected today, which biases results upward.</aside>
 
-    <section class="panel">
-      <h2>Portfolio equity</h2>
-      <div class="chart-box"><canvas id="equity-chart" role="img" aria-label="Strategy and baseline equity curves"></canvas></div>
-      <p class="note">Each fold starts with $100,000. Full-period results run continuously; fold results start a new portfolio for each test year.</p>
+    <section class="surface toolbar" aria-label="Comparison settings">
+      <label for="strategy">Strategy<select id="strategy"></select></label>
+      <label for="baseline">Buy-and-hold baseline<select id="baseline"></select></label>
+      <label for="cost">Trading costs<select id="cost"></select></label>
+    </section>
+    <p id="data-status" class="status" role="status" aria-live="polite">Loading historical results…</p>
+
+    <section class="surface section" aria-labelledby="sim-heading">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Invest a hypothetical amount</div>
+          <h2 id="sim-heading">Investment simulator</h2>
+        </div>
+        <p>Each calendar window starts a new portfolio and includes the selected end year.</p>
+      </div>
+      <div class="sim-grid">
+        <div class="sim-inputs">
+          <h3>Historical window</h3>
+          <label for="sim-amount">Starting amount (USD)<input id="sim-amount" type="number" min="0.01" max="1000000000000" step="0.01" inputmode="decimal" value="10000"></label>
+          <label for="sim-horizon">Horizon<select id="sim-horizon"></select></label>
+          <label for="sim-start">Start year<select id="sim-start"></select></label>
+        </div>
+        <div class="comparison" aria-label="Strategy and buy-and-hold outcomes">
+          <article class="outcome">
+            <h3 id="sim-strategy-name">Strategy</h3>
+            <div id="sim-strategy-final" class="value">—</div>
+            <div class="value-label">Final historical value</div>
+            <dl class="metric-pairs">
+              <dt>Total return</dt><dd id="sim-strategy-return">—</dd>
+              <dt>CAGR</dt><dd id="sim-strategy-cagr">—</dd>
+              <dt>Max drawdown</dt><dd id="sim-strategy-drawdown">—</dd>
+            </dl>
+          </article>
+          <article class="outcome baseline">
+            <h3 id="sim-baseline-name">Buy and hold</h3>
+            <div id="sim-baseline-final" class="value">—</div>
+            <div class="value-label">Final historical value</div>
+            <dl class="metric-pairs">
+              <dt>Total return</dt><dd id="sim-baseline-return">—</dd>
+              <dt>CAGR</dt><dd id="sim-baseline-cagr">—</dd>
+              <dt>Max drawdown</dt><dd id="sim-baseline-drawdown">—</dd>
+            </dl>
+          </article>
+        </div>
+      </div>
+      <p id="sim-status" class="status" role="status" aria-live="polite"></p>
+      <div class="chart-wrap"><canvas id="sim-chart" role="img" aria-label="Historical strategy and buy-and-hold equity curves for the entered amount"></canvas></div>
+      <p class="caption">Both lines use the same starting amount and the same dates. Values scale a fresh-window backtest; they are historical simulations, not forecasts.</p>
     </section>
 
-    <section class="panel">
-      <h2>Selected period metrics</h2>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Metric</th><th id="strategy-heading">Strategy</th><th id="baseline-heading">Baseline</th></tr></thead>
-        <tbody id="metrics-body"></tbody>
-      </table></div>
+    <section class="surface section" aria-labelledby="explorer-heading">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Precomputed record</div>
+          <h2 id="explorer-heading">Full period &amp; walk-forward folds</h2>
+        </div>
+        <p>Three training years followed by one test year; 2026 is partial.</p>
+      </div>
+      <label class="period-control" for="period">Chart period<select id="period"></select></label>
+      <div class="chart-wrap explorer"><canvas id="period-chart" role="img" aria-label="Selected period strategy and buy-and-hold equity curves"></canvas></div>
+      <p class="caption">The full-period chart runs continuously. Each test fold starts afresh with $100,000.</p>
+
+      <div class="tables-grid">
+        <div>
+          <h3>Selected period metrics</h3>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Metric</th><th id="period-strategy-heading">Strategy</th><th id="period-baseline-heading">Buy and hold</th></tr></thead>
+            <tbody id="period-metrics-body"></tbody>
+          </table></div>
+        </div>
+        <div>
+          <h3>All test folds · selected cost level</h3>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Test year</th><th>Strategy CAGR</th><th>Baseline CAGR</th><th>Difference</th><th>Strategy Sharpe</th><th>Baseline Sharpe</th><th>Strategy MaxDD</th><th>Baseline MaxDD</th></tr></thead>
+            <tbody id="folds-body"></tbody>
+          </table></div>
+        </div>
+      </div>
     </section>
 
-    <section class="panel">
-      <h2>Walk-forward test folds</h2>
-      <p class="note">Three training years, then one test year. This table shows only test-period results at the selected cost level. The 2026 fold is partial.</p>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Test year</th><th>Strategy CAGR</th><th>Baseline CAGR</th><th>Difference</th><th>Strategy Sharpe</th><th>Baseline Sharpe</th><th>Strategy MaxDD</th><th>Baseline MaxDD</th></tr></thead>
-        <tbody id="folds-body"></tbody>
-      </table></div>
-    </section>
-
-    <p class="note">This universe contains today's selected large-cap names and has survivorship bias. Historical results do not predict live returns. For arbitrary date ranges, use the separate Flask app locally.</p>
+    <p class="footer-note">For arbitrary date ranges, use the separate Flask app locally. The static site reads only saved JSON files and Chart.js from a CDN.</p>
   </main>
 </body>
 </html>
