@@ -1,5 +1,7 @@
 # Quantlab backtester
 
+**[Live demo](https://quantlab-backtester.onrender.com)** · backtesting framework with walk-forward validation
+
 Quantlab is a small daily-market-data backtesting framework. It loads adjusted stock prices, walks forward one bar at a time, applies trading costs, and compares each strategy with an equal-weight buy-and-hold baseline. The repository includes a moving-average crossover, a monthly momentum ranking strategy, a parameter sweep, and a one-page Flask viewer.
 
 Backtests can look convincing for the wrong reasons. A strategy that uses a close to decide and trades at that same close has seen information unavailable when the order was placed. Ignoring costs can make frequent trading appear profitable. Choosing assets or parameters after seeing the outcome can make an in-sample result look like a discovery. The framework makes those choices visible; it does not remove all sources of bias.
