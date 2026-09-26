@@ -37,6 +37,27 @@ def test_never_rebalances_on_exactly_one_trading_day():
     )
 
 
+def test_on_listing_rebalances_only_after_first_available_bar():
+    data = prices().astype(float)
+    data.loc[data.index[:3], ("open", "BBB")] = float("nan")
+    data.loc[data.index[:3], ("close", "BBB")] = float("nan")
+
+    never = BacktestEngine(data, costs=CostModel(0, 0, 0)).run(BuyAndHold())
+    on_listing = BacktestEngine(data, costs=CostModel(0, 0, 0)).run(
+        BuyAndHold(rebalance="on_listing")
+    )
+
+    assert set(never.trades["timestamp"]) == {data.index[1]}
+    assert set(never.trades["symbol"]) == {"AAA"}
+    assert set(on_listing.trades["timestamp"]) == {data.index[1], data.index[4]}
+    assert on_listing.positions.loc[data.index[3], "BBB"] == 0
+    assert on_listing.positions.loc[data.index[4], "BBB"] > 0
+    assert on_listing.positions.loc[data.index[1], "AAA"] > never.positions.loc[
+        data.index[1], "AAA"
+    ]
+    assert (on_listing.positions.iloc[4:] == on_listing.positions.iloc[4]).all().all()
+
+
 def test_none_signal_holds_initial_shares_without_further_trades():
     class EnterThenHold(Strategy):
         warmup = 1

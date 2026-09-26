@@ -1,7 +1,13 @@
 from .engine import BacktestEngine, BacktestResult, CostModel
 from .metrics import summarise
 from .strategy import Strategy
-from .walkforward import Fold, evaluate_walkforward, rolling_folds, to_markdown
+from .walkforward import (
+    Fold,
+    evaluate_walkforward,
+    regime_breakdown,
+    rolling_folds,
+    to_markdown,
+)
 
 __all__ = [
     "BacktestEngine",
@@ -10,6 +16,7 @@ __all__ = [
     "Fold",
     "Strategy",
     "evaluate_walkforward",
+    "regime_breakdown",
     "rolling_folds",
     "summarise",
     "to_markdown",

@@ -37,6 +37,24 @@ def test_ranks_trailing_three_months_then_holds_until_next_month():
     assert set(result.trades["symbol"]) == {"AAA"}
 
 
+def test_excludes_new_listing_without_full_lookback():
+    data = prices().astype(float)
+    before_march = data.index.month < 3
+    data.loc[before_march, ("open", "BBB")] = float("nan")
+    data.loc[before_march, ("close", "BBB")] = float("nan")
+    data[("open", "AAA")] = range(200, 200 - len(data), -1)
+    data[("close", "AAA")] = range(200, 200 - len(data), -1)
+    april_first = data.index[data.index.month == 4][0]
+    history = data.loc[:april_first]
+
+    # BBB has a better recent return, but no price three months ago.
+    assert MomentumRanking(3, 1).generate_weights(history).to_dict() == {
+        "AAA": 1.0,
+        "BBB": 0.0,
+    }
+    assert MomentumRanking(3, 2).generate_weights(history) is None
+
+
 def test_rejects_invalid_momentum_parameters():
     with pytest.raises(ValueError):
         MomentumRanking(0, 1)

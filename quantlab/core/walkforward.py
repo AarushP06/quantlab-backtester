@@ -80,16 +80,20 @@ def evaluate_walkforward(
     train_years: int = 3,
     test_years: int = 1,
     costs: CostModel | None = None,
+    baseline_rebalance: str = "never",
 ) -> pd.DataFrame:
     """Evaluate a fixed strategy on each test slice against buy-and-hold.
 
-    Each row identifies a fold, strategy, and cost model. The aggregate
-    compounds independent test-period equity paths; it does not average fold
-    returns. This function does not fit or tune on the train slices.
+    Each row identifies a fold, strategy, and cost model. Select the baseline
+    with ``baseline_rebalance``; the default retains historical reports.
+    The aggregate compounds independent test-period equity paths; it does
+    not average fold returns. This function does not fit or tune on train.
     """
     folds = rolling_folds(prices, train_years, test_years)
     if not folds:
         raise ValueError("Not enough calendar years for a walk-forward fold")
+    if baseline_rebalance not in {"never", "on_listing", "monthly", "daily"}:
+        raise ValueError("Invalid baseline rebalance mode")
 
     scenarios = {"0 bps": CostModel(0, 0, 0), "realistic": costs or CostModel()}
     rows = []
@@ -100,8 +104,10 @@ def evaluate_walkforward(
         for fold in folds:
             strategy_result = BacktestEngine(fold.test, costs=cost_model).run(strategy)
             baseline_result = BacktestEngine(fold.test, costs=cost_model).run(
-                BuyAndHold()
+                BuyAndHold(rebalance=baseline_rebalance)
             )
+            if baseline_rebalance != "never":
+                baseline_result.strategy_name = f"BuyAndHold[{baseline_rebalance}]"
             strategy_results.append(strategy_result)
             baseline_results.append(baseline_result)
             rows.extend(_metric_rows(fold.label, scenario, strategy_result, baseline_result))
@@ -167,3 +173,48 @@ def to_markdown(report: pd.DataFrame) -> str:
         ]
         lines.append("| " + " | ".join(str(cell).replace("|", "\\|") for cell in cells) + " |")
     return "\n".join(lines)
+
+
+def regime_breakdown(
+    reports: dict[str, pd.DataFrame],
+    drawdown_years: frozenset[int] = frozenset({2008, 2018, 2022}),
+    recovery_years: frozenset[int] = frozenset({2009, 2020}),
+) -> pd.DataFrame:
+    """Average test-fold CAGR, Sharpe, and MaxDD by regime and baseline.
+
+    Each calendar test fold has equal weight. Aggregate rows are excluded;
+    a partial final year still counts as one fold if present.
+    """
+    if drawdown_years & recovery_years:
+        raise ValueError("Drawdown and recovery years must not overlap")
+
+    def classify_regime(label: str) -> str:
+        year = int(label.rsplit("test ", 1)[1][:4])
+        if year in drawdown_years:
+            return "sustained drawdown"
+        if year in recovery_years:
+            return "recovery"
+        return "steady bull"
+
+    rows = []
+    for baseline_mode, report in reports.items():
+        folds = report.loc[report["fold"] != "aggregate"].copy()
+        folds["regime"] = folds["fold"].map(classify_regime)
+        for (cost_model, regime_name), group in folds.groupby(
+            ["cost_model", "regime"], sort=False
+        ):
+            baseline = group[group["strategy"].str.endswith("(baseline)")]
+            strategy = group[~group["strategy"].str.endswith("(baseline)")]
+            rows.append({
+                "baseline_mode": baseline_mode,
+                "cost_model": cost_model,
+                "regime": regime_name,
+                "folds": strategy["fold"].nunique(),
+                "strategy_CAGR": strategy["CAGR"].mean(),
+                "baseline_CAGR": baseline["CAGR"].mean(),
+                "strategy_Sharpe": strategy["Sharpe"].mean(),
+                "baseline_Sharpe": baseline["Sharpe"].mean(),
+                "strategy_MaxDD": strategy["MaxDD"].mean(),
+                "baseline_MaxDD": baseline["MaxDD"].mean(),
+            })
+    return pd.DataFrame(rows)

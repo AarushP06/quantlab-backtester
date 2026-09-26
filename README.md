@@ -35,7 +35,9 @@ Symbols that listed later remain `NaN` before their first bar. They are not back
 | WMT | 2005-01-03 |
 | XOM | 2005-01-03 |
 
-The engine gives a strategy history through bar *t*. Weights decided on that bar execute at bar *t+1*'s open; `None` means leave current shares untouched. A symbol with no open price cannot trade. A held symbol with a missing quote is marked at its last observed price until a new quote arrives, rather than at zero. `BuyAndHold()` buys once and holds its initial share counts. In a run beginning in 2005, six later-listed names cannot be bought at that initial entry; the baseline's first entry therefore contains **14 symbols**. That is a consequence of the current strategy definition, not an imputation of pre-IPO prices.
+The engine gives a strategy history through bar *t*. Weights decided on that bar execute at bar *t+1*'s open; `None` means leave current shares untouched. A symbol with no open price cannot trade. A held symbol with a missing quote is marked at its last observed price until a new quote arrives, rather than at zero.
+
+**Baseline membership is a choice.** `BuyAndHold(rebalance="never")`, the default and the baseline used in every results table below, submits equal target weights across the full 20-symbol universe once, then holds the filled share counts forever. In the 2005-start run, only **14 symbols** have prices at entry; the other six cannot be bought, and their target allocation remains cash. `BuyAndHold(rebalance="on_listing")` instead starts equal-weighted across those 14 available symbols. When a later-listed symbol first has a closing price, it submits new equal weights across all symbols seen so far; trades execute at the following bar's open. It then holds shares unchanged until another first listing. This brings later listings into the portfolio but also sells and buys existing holdings, changing exposure, turnover, and costs. Neither mode backfills pre-listing prices. Choose the baseline explicitly when comparing strategies; the reported `never` results must not be read as `on_listing` results.
 
 The default cost model charges **5 basis points of traded notional**: 1 bp commission, 2 bps spread, and 2 bps slippage. Reports also show 0 bps. [`rolling_folds()`](quantlab/core/walkforward.py) uses three training years followed by non-overlapping one-year test periods. The fixed moving-average crossover is run on each test slice. The momentum sweep tries `N ∈ {3, 6, 9, 12}` months and `k ∈ {3, 5, 10}` on each train slice, selects the best realistic-cost train Sharpe, and evaluates only that pair on the following test slice. The 2026 fold is partial.
 
@@ -59,7 +61,18 @@ These are review flags, not automatic corrections. The current XNYS calendar fla
 
 ## Measured results
 
-All figures below use this 2005–2026 snapshot and the code in this repository. The full-period 20/50 crossover returned **4,312.3% at 0 bps** and **3,382.8% at 5 bps**, versus **9,525.3%** for buy-and-hold under either cost assumption. Its CAGR was **19.07% vs 23.43%** at 0 bps and **17.78% vs 23.43%** at 5 bps. These full-period results include a present-day selected universe and are not an independent test.
+All figures below use this 2005–2026 snapshot and the code in this repository. The full-period 20/50 crossover trails both baseline definitions. These full-period results include a present-day selected universe and are not an independent test.
+
+| Cost | Measure | MACross(20/50) | BuyAndHold `never` | BuyAndHold `on_listing` |
+| --- | --- | ---: | ---: | ---: |
+| 0 bps | Total return | 4,312.29% | 9,525.25% | 20,052.70% |
+| 0 bps | CAGR | 19.07% | 23.43% | 27.71% |
+| 0 bps | Sharpe | 1.001 | 1.035 | 1.053 |
+| 5 bps | Total return | 3,382.84% | 9,525.22% | 20,032.72% |
+| 5 bps | CAGR | 17.78% | 23.43% | 27.70% |
+| 5 bps | Sharpe | 0.944 | 1.035 | 1.052 |
+
+The `on_listing` full-period baseline starts fully invested in the available names and enters the other six as they arrive. The difference from `never` is therefore substantial; it is a different portfolio policy, not a free improvement to the same benchmark.
 
 The following is `to_markdown()` output for all **19 realistic-cost test folds** and the compounded aggregate. The full function also returns 0 bps rows. The aggregate compounds independent test-period equity paths; it is not the mean fold return.
 
@@ -106,7 +119,36 @@ The following is `to_markdown()` output for all **19 realistic-cost test folds**
 | aggregate | MACross(20/50) | realistic | 15.08% | 0.91 | -30.73% | 18.60 | 91,357.86 | 46741 |
 | aggregate | BuyAndHold (baseline) | realistic | 22.47% | 1.19 | -34.74% | 0.96 | 9,369.20 | 364 |
 
-At 5 bps the crossover beat the baseline on CAGR in **4 of 19** folds, including 2008 and 2020, but its aggregate test CAGR was **15.08% vs 22.47%**. Results vary by regime; the expanded record changes the earlier three-fold story.
+At 5 bps the crossover beat the `never` baseline on CAGR in **4 of 19** folds, but its aggregate test CAGR was **15.08% vs 22.47%**. **2008 and 2022 diverge:** in 2008 the crossover lost **12.55%** against `never` buy-and-hold's **22.95%** loss, with similar max drawdowns (**-30.73% vs -31.23%**). In 2022 it lost **17.39%** against the baseline's **14.98%** loss, and its max drawdown was **worse** (**-29.91% vs -21.62%**). Trend following did not reliably cushion drawdowns in these two bear-market years. The 2009 and 2020 recovery years should not be pooled with them to claim a general crisis advantage.
+
+Running the same fixed crossover against `on_listing` gives **22.08% aggregate baseline CAGR and 1.09 Sharpe** at 5 bps, versus crossover **15.08% and 0.91**. At 0 bps the compounded aggregate CAGRs are **16.15%** for the crossover, **22.52%** for `never`, and **22.13%** for `on_listing`. Each one-year test fold starts a new portfolio; these aggregate numbers are distinct from the uninterrupted 2005–2026 runs above. The complete two-baseline, two-cost walk-forward table is printed by `python scripts/report_walkforward.py`.
+
+The regime breakdown below takes the simple mean of each fold's CAGR, Sharpe, and **within-fold max drawdown**. Sustained drawdown contains **2008, 2018, 2022**; recovery contains **2009, 2020**; “steady bull” is the requested remainder of 14 folds, including partial 2026. Max drawdown is negative; a value closer to zero means a shallower drawdown. These labels describe selected calendar years, not a regime classifier that could identify them in advance.
+
+| Baseline | Cost | Regime (folds) | Crossover CAGR | Baseline CAGR | Crossover Sharpe | Baseline Sharpe | Crossover MaxDD | Baseline MaxDD |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `never` | 0 bps | Sustained drawdown (3) | -10.74% | -12.49% | -0.331 | -0.443 | -24.87% | -24.24% |
+| `never` | 0 bps | Recovery (2) | 58.69% | 50.71% | 2.232 | 1.582 | -9.36% | -23.87% |
+| `never` | 0 bps | Steady bull (14) | 17.83% | 28.71% | 1.414 | 1.873 | -9.96% | -9.41% |
+| `never` | 5 bps | Sustained drawdown (3) | -11.96% | -12.54% | -0.390 | -0.445 | -25.40% | -24.27% |
+| `never` | 5 bps | Recovery (2) | 57.45% | 50.66% | 2.197 | 1.580 | -9.41% | -23.88% |
+| `never` | 5 bps | Steady bull (14) | 16.84% | 28.66% | 1.349 | 1.869 | -10.08% | -9.41% |
+| `on_listing` | 0 bps | Sustained drawdown (3) | -10.74% | -15.49% | -0.331 | -0.421 | -24.87% | -28.18% |
+| `on_listing` | 0 bps | Recovery (2) | 58.69% | 53.78% | 2.232 | 1.531 | -9.36% | -25.87% |
+| `on_listing` | 0 bps | Steady bull (14) | 17.83% | 28.87% | 1.414 | 1.865 | -9.96% | -9.93% |
+| `on_listing` | 5 bps | Sustained drawdown (3) | -11.96% | -15.54% | -0.390 | -0.423 | -25.40% | -28.21% |
+| `on_listing` | 5 bps | Recovery (2) | 57.45% | 53.72% | 2.197 | 1.529 | -9.41% | -25.88% |
+| `on_listing` | 5 bps | Steady bull (14) | 16.84% | 28.82% | 1.349 | 1.861 | -10.08% | -9.94% |
+
+Against the default `never` baseline, the crossover's mean sustained-drawdown CAGR is slightly higher at 5 bps, but its **mean max drawdown is deeper**. The stronger recovery-year figures should not be used as evidence that it protects capital through sustained declines.
+
+The individual sustained-drawdown folds at **5 bps** show why the average alone is inadequate:
+
+| Test year | Crossover CAGR | `never` CAGR | `on_listing` CAGR | Crossover MaxDD | `never` MaxDD | `on_listing` MaxDD |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2008 | -12.55% | -22.95% | -31.94% | -30.73% | -31.23% | -43.04% |
+| 2018 | -5.93% | 0.31% | 0.31% | -15.56% | -19.96% | -19.96% |
+| 2022 | -17.39% | -14.98% | -14.98% | -29.91% | -21.62% | -21.62% |
 
 The momentum sweep selected each pair on train data only. `Gap` means train Sharpe minus test Sharpe; the baseline column is buy-and-hold test Sharpe with the same costs.
 
@@ -156,7 +198,7 @@ The average gap was **0.270 Sharpe points at 0 bps** and **0.274 at 5 bps**. At 
 ## Limitations
 
 - **Survivorship and selection bias:** this is a present-day set of 20 large-cap companies, not a reconstructed historical top-20 membership list. Selecting today's surviving large companies can select for past success. The code does not verify that these are literally the current top 20 by market capitalization.
-- **Incomplete early universe:** six names were not yet listed in 2005. The long-run buy-and-hold baseline holds only the 14 available names after its single initial entry; a monthly or daily strategy may enter later-listed names after they become tradable. Comparisons should be read with that difference in mind.
+- **Incomplete early universe:** six names were not yet listed in 2005. The reported `never` baseline holds only the 14 initially tradable names and leaves the other target allocations in cash. The `on_listing` baseline includes those names only after they first trade, and rebalances each time one arrives. This choice materially changes the comparison.
 - **Limited independence:** 19 test folds cover more regimes than the old five-year sample, including 2008, 2020, and 2022, but the rolling training windows overlap and the folds come from one US equity history. The final 2026 fold is partial.
 - **Only one asset class:** the universe is US large-cap equities. Results do not establish behavior in bonds, international equities, small caps, or other markets.
 - **Data quality:** the flags above remain unresolved. A calendar mismatch, genuine gap, adjusted-price anomaly, or real price shock can affect results and deserves inspection before stronger claims.
@@ -174,6 +216,7 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 python -m pytest -q
 python scripts/run_backtest.py
+python scripts/report_walkforward.py
 python scripts/param_sweep.py
 python -m flask --app app.wsgi:app run
 ```

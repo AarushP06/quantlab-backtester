@@ -1,11 +1,13 @@
 """Walk-forward slices and reports stay chronological and out of sample."""
 
 import pandas as pd
+import pytest
 
 from quantlab.core import (
     CostModel,
     Strategy,
     evaluate_walkforward,
+    regime_breakdown,
     rolling_folds,
     to_markdown,
 )
@@ -86,3 +88,34 @@ def test_markdown_helper_produces_readme_table(capsys):
     assert "| aggregate | StayFlat | realistic |" in markdown
     assert len(markdown.splitlines()) == len(report) + 2
     assert "train 2020-2021 / test 2022-2023" in capsys.readouterr().out
+
+
+def test_on_listing_baseline_and_regime_averages_exclude_aggregate(capsys):
+    never = evaluate_walkforward(yearly_prices(), StayFlat(), train_years=2)
+    on_listing = evaluate_walkforward(
+        yearly_prices(), StayFlat(), train_years=2,
+        baseline_rebalance="on_listing",
+    )
+    assert "BuyAndHold[on_listing] (baseline)" in set(on_listing["strategy"])
+
+    summary = regime_breakdown(
+        {"never": never, "on_listing": on_listing},
+        drawdown_years=frozenset({2022}),
+        recovery_years=frozenset({2023}),
+    )
+    assert len(summary) == 12  # two modes, two costs, three regimes
+    assert set(summary["regime"]) == {
+        "sustained drawdown", "recovery", "steady bull",
+    }
+    assert set(summary["folds"]) == {1, 2}
+    assert (summary["strategy_CAGR"] == 0).all()
+    assert (summary["baseline_CAGR"] > 0).all()
+    assert (summary["strategy_MaxDD"] == 0).all()
+    assert (summary["baseline_MaxDD"] <= 0).all()
+
+    with pytest.raises(ValueError, match="overlap"):
+        regime_breakdown(
+            {"never": never},
+            drawdown_years=frozenset({2022}),
+            recovery_years=frozenset({2022}),
+        )

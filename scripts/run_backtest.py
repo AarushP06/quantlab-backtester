@@ -1,4 +1,4 @@
-"""Compare a 20/50 moving-average crossover with buy-and-hold."""
+"""Compare a 20/50 moving-average crossover with both buy-and-hold modes."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ DATASET = Path("data/processed/universe.parquet")
 
 
 def run_backtests(path: Path = DATASET) -> dict[str, pd.DataFrame]:
-    """Run both strategies on identical bars under both cost assumptions."""
+    """Run the crossover and both baselines under both cost assumptions."""
     if not path.is_file():
         raise FileNotFoundError(
             f"Dataset not found: {path}. Run python scripts/build_dataset.py first."
@@ -32,8 +32,16 @@ def run_backtests(path: Path = DATASET) -> dict[str, pd.DataFrame]:
         result = BacktestEngine(prices, costs=costs).run(
             MovingAverageCrossover(20, 50)
         )
-        baseline = BacktestEngine(prices, costs=costs).run(BuyAndHold())
-        table = summarise(result, baseline)
+        never = BacktestEngine(prices, costs=costs).run(BuyAndHold(rebalance="never"))
+        on_listing = BacktestEngine(prices, costs=costs).run(
+            BuyAndHold(rebalance="on_listing")
+        )
+        table = summarise(result, never).rename(
+            columns={"BuyAndHold (baseline)": "BuyAndHold[never] (baseline)"}
+        )
+        table["BuyAndHold[on_listing] (baseline)"] = summarise(
+            result, on_listing
+        )["BuyAndHold (baseline)"]
         tables[label] = table
         print(f"\n{label}\n{table.to_string()}")
     return tables

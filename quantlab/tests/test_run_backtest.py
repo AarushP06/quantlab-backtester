@@ -19,7 +19,11 @@ def test_run_backtests_prints_strategy_and_baseline_for_both_costs(tmp_path, cap
 
     assert set(tables) == {"0 bps", "Default costs (5 bps)"}
     for table in tables.values():
-        assert list(table.columns) == ["MACross(20/50)", "BuyAndHold (baseline)"]
+        assert list(table.columns) == [
+            "MACross(20/50)",
+            "BuyAndHold[never] (baseline)",
+            "BuyAndHold[on_listing] (baseline)",
+        ]
     assert tables["0 bps"].loc["Costs paid"].eq(0).all()
     assert tables["Default costs (5 bps)"].loc["Costs paid"].gt(0).all()
     output = capsys.readouterr().out
