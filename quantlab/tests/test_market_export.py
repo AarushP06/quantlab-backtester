@@ -85,11 +85,13 @@ def test_other_markets_are_labeled_chart_only_and_outside_stock_snapshot():
 
     assert 'id="asset-list"' in page
     assert 'id="asset-chart"' in page
-    assert "These six markets are not in the stock backtests" in page
+    assert "These four markets are not in the stock backtests" in page
     assert "Exchange data may be delayed" in page
     for symbol in (
-        "CME_MINI:MNQ1!", "CME_MINI:NQ1!", "SP:SPX",
-        "OANDA:XAUUSD", "BITSTAMP:BTCUSD", "NYMEX:CL1!",
+        "CME_MINI:MNQ1!", "CME_MINI:NQ1!",
+        "OANDA:XAUUSD", "BITSTAMP:BTCUSD",
     ):
         assert symbol in script
-    assert not {"MNQ", "NQ", "SPX", "GOLD", "BTC", "OIL"}.intersection(snapshot["symbols"])
+    assert "SP:SPX" not in script
+    assert "NYMEX:CL1!" not in script
+    assert not {"MNQ", "NQ", "GOLD", "BTC"}.intersection(snapshot["symbols"])

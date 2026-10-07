@@ -3,7 +3,7 @@
 .asset-heading, .asset-detail { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: .6rem 1.2rem; }
 .asset-heading h2, .asset-detail h3 { margin-bottom: 0; }
 .asset-heading p { margin: 0; font-size: .8rem; }
-.asset-list { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .5rem; margin: 1rem 0; }
+.asset-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; margin: 1rem 0; }
 .asset-button { display: grid; gap: .2rem; min-width: 0; padding: .65rem .7rem; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .asset-button:hover, .asset-button[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-muted); }
 .asset-button strong { font-size: .9rem; }

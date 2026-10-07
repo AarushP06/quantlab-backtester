@@ -47,6 +47,6 @@ python scripts/param_sweep.py
 
 To deliberately refresh the daily dataset, run `python scripts/build_dataset.py --start 2005-01-01 --end YYYY-MM-DD`. Review the validation issues it prints; flagged rows are not silently changed. Then run `python scripts/precompute_results.py` and `python scripts/precompute_market.py` to update the static exports.
 
-The market explorer includes **10 additional stocks** that are not part of the backtest universe. Refresh their history with `python scripts/build_market_extras.py` before `python scripts/precompute_market.py`. Its latest Finnhub quote is separate from the saved adjusted history; the TradingView one-minute chart may use delayed exchange data. It also has chart-only views for MNQ and NQ futures, the S&P 500 index, spot gold, Bitcoin, and WTI oil futures. These markets do not change the stock backtests.
+The market explorer includes **10 additional stocks** that are not part of the backtest universe. Refresh their history with `python scripts/build_market_extras.py` before `python scripts/precompute_market.py`. Its latest Finnhub quote is separate from the saved adjusted history; the TradingView one-minute chart may use delayed exchange data. It also has chart-only views for MNQ and NQ futures, spot gold, and Bitcoin. These markets do not change the stock backtests.
 
 The [Dockerfile](Dockerfile) and [Render configuration](render.yaml) serve the Flask app from committed data. [vercel.json](vercel.json) serves the static dashboard.

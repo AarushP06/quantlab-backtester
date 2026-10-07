@@ -22,10 +22,8 @@ const TRADINGVIEW_SYMBOLS = {
 const OTHER_MARKETS = [
   {id: "MNQ", label: "Micro Nasdaq", title: "Micro E-mini Nasdaq-100 futures", type: "CME continuous futures", symbol: "CME_MINI:MNQ1!"},
   {id: "NQ", label: "E-mini Nasdaq", title: "E-mini Nasdaq-100 futures", type: "CME continuous futures", symbol: "CME_MINI:NQ1!"},
-  {id: "SPX", label: "S&P 500 index", title: "S&P 500 index", type: "US equity index", symbol: "SP:SPX"},
   {id: "GOLD", label: "Spot gold", title: "Gold spot / US dollar", type: "Spot metal quote", symbol: "OANDA:XAUUSD"},
-  {id: "BTC", label: "Bitcoin", title: "Bitcoin / US dollar", type: "Bitstamp spot market", symbol: "BITSTAMP:BTCUSD"},
-  {id: "OIL", label: "WTI crude", title: "WTI crude oil futures", type: "NYMEX continuous futures", symbol: "NYMEX:CL1!"}
+  {id: "BTC", label: "Bitcoin", title: "Bitcoin / US dollar", type: "Bitstamp spot market", symbol: "BITSTAMP:BTCUSD"}
 ];
 
 const byId = id => document.getElementById(id);
@@ -174,7 +172,7 @@ function renderAssetList() {
     button.className = "asset-button";
     button.dataset.asset = asset.id;
     const name = document.createElement("strong");
-    name.textContent = asset.id === "SPX" ? "S&P 500" : asset.id;
+    name.textContent = asset.id;
     const label = document.createElement("span");
     label.textContent = asset.label;
     button.append(name, label);
