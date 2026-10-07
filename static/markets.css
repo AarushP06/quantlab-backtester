@@ -40,7 +40,7 @@
 .live-dot { width: .5rem; height: .5rem; border-radius: 50%; background: #167654; }
 .intraday-note { color: var(--muted); font-size: .78rem; line-height: 1.55; margin: .65rem 0 0; }
 .tradingview-chart { height: 450px; margin-top: 1rem; }
-.tradingview-chart[hidden], .stock-chart[hidden], .range-bar[hidden], .intraday-note[hidden] { display: none; }
+.tradingview-chart[hidden], .stock-chart[hidden], .range-bar[hidden], .intraday-note[hidden], #history-caption[hidden] { display: none; }
 .tradingview-widget-container, .tradingview-widget-container__widget { width: 100%; height: 100%; }
 .range-bar { display: flex; flex-wrap: wrap; gap: 1.3rem; border-bottom: 1px solid var(--border); margin-top: .5rem; padding: 0; }
 .range-bar button { cursor: pointer; color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: .7rem 0 .55rem; font: inherit; font-size: .8rem; font-weight: 700; }

@@ -84,6 +84,7 @@ def test_intraday_widget_covers_every_market_symbol_without_backtest_feed():
 
     assert 'data-view="intraday"' in html
     assert 'id="intraday-chart"' in html
+    assert 'id="open-tradingview"' in html
     assert "Exchange data may be delayed" in html
     assert "embed-widget-advanced-chart.js" in script
     assert 'interval: "1"' in script

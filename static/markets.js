@@ -117,6 +117,7 @@ function renderIntradayChart() {
     target.textContent = "A one-minute chart is not configured for this symbol.";
     return;
   }
+  byId("open-tradingview").href = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
   const container = document.createElement("div");
   container.className = "tradingview-widget-container";
   const widget = document.createElement("div");
@@ -150,6 +151,7 @@ function setChartView(view) {
     button.setAttribute("aria-pressed", String(active));
   }
   byId("intraday-note").hidden = view !== "intraday";
+  byId("history-caption").hidden = view !== "history";
   byId("chart-kicker").textContent = view === "intraday"
     ? "Intraday market chart · USD" : "Adjusted price history · USD";
   byId("intraday-chart").hidden = view !== "intraday";

@@ -51,7 +51,7 @@
           <button type="button" data-view="history" class="active" aria-pressed="true">Historical</button>
           <button type="button" data-view="intraday" aria-pressed="false"><span class="live-dot" aria-hidden="true"></span>Live market · 1m candles</button>
         </div>
-        <p id="intraday-note" class="intraday-note" hidden>One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> update automatically when available. Exchange data may be delayed; check the chart's market status and time. These prices are separate from the adjusted backtest history.</p>
+        <p id="intraday-note" class="intraday-note" hidden>One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> update automatically when available. Exchange data may be delayed; check the chart's market status and time. These prices are separate from the adjusted backtest history. <a id="open-tradingview" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a></p>
         <div class="range-bar" role="group" aria-label="Chart date range">
           <button type="button" data-range="1M">1M</button><button type="button" data-range="6M">6M</button><button type="button" data-range="1Y" class="active">1Y</button><button type="button" data-range="5Y">5Y</button><button type="button" data-range="ALL">All</button>
         </div>
@@ -63,7 +63,7 @@
           <div><span>1-year low</span><strong id="fact-low">—</strong></div>
           <div><span>1-year high</span><strong id="fact-high">—</strong></div>
         </div>
-        <p class="caption">Adjusted closes account for splits and distributions in the saved feed. The daily change compares the last two available closes; these values are not executable quotes.</p>
+        <p class="caption" id="history-caption">Adjusted closes account for splits and distributions in the saved feed. The daily change compares the last two available closes; these values are not executable quotes.</p>
       </section>
     </div>
     <p class="footer-note">Want to compare trading rules? <a href="index.html">Open the historical simulation and buy-and-hold comparison.</a></p>
