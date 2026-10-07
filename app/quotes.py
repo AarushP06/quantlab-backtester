@@ -10,11 +10,8 @@ from threading import Lock
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-from zoneinfo import ZoneInfo
 
 QUOTE_URL = "https://finnhub.io/api/v1/quote"
-CANDLE_URL = "https://finnhub.io/api/v1/stock/candle"
-NEW_YORK = ZoneInfo("America/New_York")
 
 
 class QuoteUnavailable(Exception):
@@ -35,19 +32,14 @@ class MarketQuoteService:
         self.opener = opener
         self.ttl_seconds = ttl_seconds
         self._cached: dict[str, tuple[float, dict]] = {}
-        self._candle_cache: dict[str, tuple[float, dict]] = {}
         self._lock = Lock()
 
-    def _check_symbol(self, symbol: str) -> str:
+    def get(self, symbol: str) -> dict:
         symbol = symbol.upper()
         if symbol not in self.symbols:
             raise UnknownSymbol(f"Symbol {symbol!r} is not in the market explorer.")
         if not self.api_key:
             raise QuoteUnavailable("Quote provider is not configured.")
-        return symbol
-
-    def get(self, symbol: str) -> dict:
-        symbol = self._check_symbol(symbol)
         with self._lock:
             now = time.monotonic()
             cached = self._cached.get(symbol)
@@ -89,67 +81,3 @@ class MarketQuoteService:
             }
             self._cached[symbol] = (now + self.ttl_seconds, quote)
             return quote
-
-    def get_candles(self, symbol: str) -> dict:
-        """Return provider one-minute OHLC bars from the latest available session."""
-        symbol = self._check_symbol(symbol)
-        with self._lock:
-            now = time.monotonic()
-            cached = self._candle_cache.get(symbol)
-            if cached is not None and now < cached[0]:
-                return cached[1]
-            end = int(time.time())
-            request = Request(
-                f"{CANDLE_URL}?{urlencode({'symbol': symbol, 'resolution': '1', 'from': end - 7 * 86400, 'to': end})}",
-                headers={"X-Finnhub-Token": self.api_key, "Accept": "application/json"},
-            )
-            try:
-                with self.opener(request, timeout=8) as response:
-                    raw = json.loads(response.read(1_000_000))
-                if raw.get("s") != "ok":
-                    raise ValueError("no candle data")
-                columns = [raw[key] for key in ("t", "o", "h", "l", "c", "v")]
-                count = len(columns[0])
-                if not 0 < count <= 10000 or any(len(col) != count for col in columns):
-                    raise ValueError("invalid candle lengths")
-                dates = [datetime.fromtimestamp(int(stamp), NEW_YORK).date() for stamp in columns[0]]
-                last_day = max(dates)
-                candles = []
-                for index, session in enumerate(dates):
-                    if session != last_day:
-                        continue
-                    stamp = int(columns[0][index])
-                    open_, high, low, close, volume = (
-                        float(col[index]) for col in columns[1:]
-                    )
-                    if (
-                        not all(math.isfinite(value) for value in (open_, high, low, close, volume))
-                        or low <= 0 or volume < 0 or high < max(open_, close)
-                        or low > min(open_, close)
-                    ):
-                        raise ValueError("invalid candle prices")
-                    candles.append({
-                        "time": datetime.fromtimestamp(stamp, timezone.utc).isoformat(),
-                        "open": open_, "high": high, "low": low,
-                        "close": close, "volume": volume,
-                    })
-                if not candles:
-                    raise ValueError("no candles for latest session")
-                candles.sort(key=lambda candle: candle["time"])
-            except (
-                HTTPError, URLError, OSError, ValueError, KeyError, TypeError,
-                OverflowError,
-            ) as exc:
-                raise QuoteUnavailable("One-minute candles are unavailable from the provider.") from exc
-
-            result = {
-                "symbol": symbol,
-                "resolution": "1 minute",
-                "session_date": last_day.isoformat(),
-                "latest_bar_time": candles[-1]["time"],
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
-                "source": "Finnhub",
-                "candles": candles,
-            }
-            self._candle_cache[symbol] = (now + self.ttl_seconds, result)
-            return result

@@ -5,10 +5,19 @@ let selectedView = "history";
 let priceChart;
 const providerQuotes = new Map();
 const quotePending = new Set();
-const providerCandles = new Map();
-const candlePending = new Set();
 const QUOTE_API_BASE = "https://quantlab-backtester.onrender.com/api/quote/";
-const CANDLE_API_BASE = "https://quantlab-backtester.onrender.com/api/candles/";
+const TRADINGVIEW_SYMBOLS = {
+  AAPL: "NASDAQ:AAPL", ABBV: "NYSE:ABBV", ADBE: "NASDAQ:ADBE",
+  AMD: "NASDAQ:AMD", AMZN: "NASDAQ:AMZN", AVGO: "NASDAQ:AVGO",
+  BAC: "NYSE:BAC", "BRK-B": "NYSE:BRK.B", COST: "NASDAQ:COST",
+  CRM: "NYSE:CRM", DIS: "NYSE:DIS", GOOGL: "NASDAQ:GOOGL",
+  HD: "NYSE:HD", JNJ: "NYSE:JNJ", JPM: "NYSE:JPM",
+  KO: "NYSE:KO", MA: "NYSE:MA", MCD: "NYSE:MCD",
+  META: "NASDAQ:META", MSFT: "NASDAQ:MSFT", NFLX: "NASDAQ:NFLX",
+  NVDA: "NASDAQ:NVDA", ORCL: "NYSE:ORCL", PEP: "NASDAQ:PEP",
+  PG: "NYSE:PG", TSLA: "NASDAQ:TSLA", UNH: "NYSE:UNH",
+  V: "NYSE:V", WMT: "NASDAQ:WMT", XOM: "NYSE:XOM"
+};
 
 const byId = id => document.getElementById(id);
 const dollars = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
@@ -71,123 +80,6 @@ function chartColor(variable) {
   return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
 }
 
-function newYorkTime(timestamp) {
-  return new Date(timestamp).toLocaleTimeString("en-US", {
-    timeZone: "America/New_York", hour: "numeric", minute: "2-digit"
-  });
-}
-
-const candlePainter = {
-  id: "candlePainter",
-  afterDatasetsDraw(chart) {
-    if (!chart.$candles) return;
-    const {ctx, scales, chartArea} = chart;
-    const bars = chart.$candles;
-    const width = Math.max(2, Math.min(10, chartArea.width / bars.length * 0.65));
-    ctx.save();
-    for (let index = 0; index < bars.length; index++) {
-      const bar = bars[index];
-      const x = scales.x.getPixelForValue(index);
-      const high = scales.y.getPixelForValue(bar.high);
-      const low = scales.y.getPixelForValue(bar.low);
-      const open = scales.y.getPixelForValue(bar.open);
-      const close = scales.y.getPixelForValue(bar.close);
-      ctx.fillStyle = ctx.strokeStyle = bar.close >= bar.open ? "#16875e" : "#c55350";
-      ctx.lineWidth = 1.3;
-      ctx.beginPath();
-      ctx.moveTo(x, high);
-      ctx.lineTo(x, low);
-      ctx.stroke();
-      ctx.fillRect(x - width / 2, Math.min(open, close), width, Math.max(1.5, Math.abs(close - open)));
-    }
-    ctx.restore();
-  }
-};
-
-function renderCandles(payload) {
-  const candles = payload.candles;
-  if (!window.Chart) throw new Error("Chart.js did not load from the CDN.");
-  if (priceChart) priceChart.destroy();
-  const lows = candles.map(candle => candle.low);
-  const highs = candles.map(candle => candle.high);
-  const min = Math.min(...lows);
-  const max = Math.max(...highs);
-  const padding = Math.max((max - min) * 0.08, max * 0.0005);
-  priceChart = new Chart(byId("stock-chart"), {
-    type: "line",
-    data: {
-      labels: candles.map(candle => newYorkTime(candle.time)),
-      datasets: [{data: candles.map(candle => candle.close), borderWidth: 0, pointRadius: 0,
-        pointHitRadius: 10, showLine: false}]
-    },
-    plugins: [candlePainter],
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
-      interaction: {mode: "index", intersect: false},
-      plugins: {
-        legend: {display: false},
-        tooltip: {callbacks: {label: context => {
-          const bar = candles[context.dataIndex];
-          return `O ${money(bar.open)}  H ${money(bar.high)}  L ${money(bar.low)}  C ${money(bar.close)}`;
-        }}}
-      },
-      scales: {
-        x: {ticks: {color: chartColor("--muted"), maxTicksLimit: 7, maxRotation: 0}, grid: {display: false}},
-        y: {min: min - padding, max: max + padding,
-          ticks: {color: chartColor("--muted"), callback: value => money(Number(value))},
-          grid: {color: chartColor("--grid")}}
-      }
-    }
-  });
-  priceChart.$candles = candles;
-  priceChart.update("none");
-}
-
-function paintCandles(payload) {
-  if (selectedView !== "intraday" || selectedSymbol !== payload.symbol) return;
-  renderCandles(payload);
-  const last = new Date(payload.latest_bar_time).toLocaleString("en-US", {
-    timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric",
-    hour: "numeric", minute: "2-digit", timeZoneName: "short"
-  });
-  const ageMinutes = Math.floor((Date.now() - new Date(payload.latest_bar_time).getTime()) / 60000);
-  const delay = ageMinutes > 2 ? ` · last bar ${ageMinutes} minutes ago` : "";
-  const status = byId("candle-status");
-  status.textContent = `Latest available session ${payload.session_date} · 1-minute bars through ${last}${delay} · checks every minute while open`;
-  status.classList.remove("error");
-}
-
-async function refreshCandles() {
-  if (selectedView !== "intraday" || document.hidden) return;
-  const symbol = selectedSymbol;
-  if (candlePending.has(symbol)) return;
-  const cached = providerCandles.get(symbol);
-  if (cached && Date.now() - cached.loadedAt < 60000) {
-    paintCandles(cached.payload);
-    return;
-  }
-  candlePending.add(symbol);
-  byId("candle-status").textContent = "Loading the latest available minute candles…";
-  try {
-    const response = await fetch(`${CANDLE_API_BASE}${encodeURIComponent(symbol)}`, {cache: "no-store"});
-    if (!response.ok) throw new Error(`Candle service returned ${response.status}`);
-    const payload = await response.json();
-    if (payload.symbol !== symbol || !Array.isArray(payload.candles) || !payload.candles.length) {
-      throw new Error("No candle data returned");
-    }
-    providerCandles.set(symbol, {payload, loadedAt: Date.now()});
-    paintCandles(payload);
-  } catch (_error) {
-    if (selectedView === "intraday" && selectedSymbol === symbol) {
-      if (priceChart) { priceChart.destroy(); priceChart = null; }
-      byId("candle-status").textContent = "Minute candles are unavailable from the current provider plan or feed. The historical chart remains available.";
-      byId("candle-status").classList.add("error");
-    }
-  } finally {
-    candlePending.delete(symbol);
-  }
-}
-
 function renderChart(stock) {
   if (!window.Chart) throw new Error("Chart.js did not load from the CDN.");
   const start = rangeStart(stock.last_date);
@@ -215,6 +107,56 @@ function renderChart(stock) {
       }
     }
   });
+}
+
+function renderIntradayChart() {
+  const target = byId("intraday-chart");
+  target.replaceChildren();
+  const symbol = TRADINGVIEW_SYMBOLS[selectedSymbol];
+  if (!symbol) {
+    target.textContent = "A one-minute chart is not configured for this symbol.";
+    return;
+  }
+  const container = document.createElement("div");
+  container.className = "tradingview-widget-container";
+  const widget = document.createElement("div");
+  widget.className = "tradingview-widget-container__widget";
+  container.append(widget);
+  const script = document.createElement("script");
+  script.type = "text/javascript";
+  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+  script.async = true;
+  script.textContent = JSON.stringify({
+    autosize: true, symbol, interval: "1", timezone: "America/New_York",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+    style: "1", locale: "en", allow_symbol_change: false,
+    hide_side_toolbar: true, hide_top_toolbar: false, hide_legend: false,
+    hide_volume: false, withdateranges: false, calendar: false,
+    support_host: "https://www.tradingview.com"
+  });
+  container.append(script);
+  target.append(container);
+}
+
+function setChartView(view) {
+  selectedView = view;
+  const url = new URL(window.location.href);
+  if (view === "intraday") url.searchParams.set("view", "intraday");
+  else url.searchParams.delete("view");
+  history.replaceState(null, "", url);
+  for (const button of document.querySelectorAll("[data-view]")) {
+    const active = button.dataset.view === view;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+  byId("intraday-note").hidden = view !== "intraday";
+  byId("chart-kicker").textContent = view === "intraday"
+    ? "Intraday market chart · USD" : "Adjusted price history · USD";
+  byId("intraday-chart").hidden = view !== "intraday";
+  byId("history-chart").hidden = view !== "history";
+  document.querySelector(".range-bar").hidden = view !== "history";
+  if (view === "intraday") renderIntradayChart();
+  else renderChart(market.symbols[selectedSymbol]);
 }
 
 function renderList() {
@@ -274,12 +216,8 @@ function renderStock() {
   byId("fact-last").textContent = stock.last_date;
   byId("fact-low").textContent = money(stock.year_low);
   byId("fact-high").textContent = money(stock.year_high);
-  if (selectedView === "intraday") {
-    if (priceChart) { priceChart.destroy(); priceChart = null; }
-    refreshCandles();
-  } else {
-    renderChart(stock);
-  }
+  if (selectedView === "intraday") renderIntradayChart();
+  else renderChart(stock);
   refreshProviderQuote();
 }
 
@@ -298,18 +236,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!market.symbols[selectedSymbol]) selectedSymbol = symbols[0];
     byId("symbol-search").addEventListener("input", renderList);
     for (const button of document.querySelectorAll("[data-view]")) {
-      button.addEventListener("click", () => {
-        selectedView = button.dataset.view;
-        for (const item of document.querySelectorAll("[data-view]")) {
-          item.classList.toggle("active", item === button);
-          item.setAttribute("aria-pressed", String(item === button));
-        }
-        byId("candle-status").hidden = selectedView !== "intraday";
-        document.querySelector(".range-bar").hidden = selectedView === "intraday";
-        byId("stock-chart").setAttribute("aria-label", selectedView === "intraday"
-          ? "Latest available one-minute candlestick chart" : "Historical adjusted close chart");
-        renderStock();
-      });
+      button.addEventListener("click", () => setChartView(button.dataset.view));
     }
     for (const button of document.querySelectorAll("[data-range]")) {
       button.addEventListener("click", () => {
@@ -323,13 +250,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderStock);
     window.setInterval(() => {
       refreshProviderQuote();
-      refreshCandles();
     }, 60000);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) { refreshProviderQuote(); refreshCandles(); }
-    });
     renderList();
     renderStock();
+    if (new URLSearchParams(window.location.search).get("view") === "intraday") {
+      setChartView("intraday");
+    }
     status.textContent = `${symbols.length} symbols · adjusted daily closes through ${market.as_of}.`;
   } catch (error) {
     status.textContent = `Unable to display market data: ${error.message}`;

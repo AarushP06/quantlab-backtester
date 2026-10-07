@@ -27,7 +27,7 @@
       <div class="snapshot-label">Historical snapshot<br><strong id="snapshot-date">Loading…</strong></div>
     </header>
 
-    <aside class="notice" role="note">Charts and stock rows use a historical snapshot. Provider quotes appear separately. These large caps were selected today, which biases historical comparisons upward. Past performance does not predict future returns.</aside>
+    <aside class="notice" role="note">The historical chart and stock rows use a saved snapshot. Minute candles and provider quotes appear separately. These large caps were selected today, which biases historical comparisons upward. Past performance does not predict future returns.</aside>
     <p id="market-status" class="status" role="status" aria-live="polite">Loading saved market data…</p>
 
     <div class="market-layout">
@@ -39,7 +39,7 @@
 
       <section class="surface stock-panel" aria-labelledby="stock-title">
         <div class="stock-header">
-          <div><div class="eyebrow">Adjusted price history · USD</div><h2 id="stock-title">Select a stock</h2><p id="stock-dates" class="stock-dates"></p></div>
+          <div><div class="eyebrow" id="chart-kicker">Adjusted price history · USD</div><h2 id="stock-title">Select a stock</h2><p id="stock-dates" class="stock-dates"></p></div>
           <div class="quote"><div class="quote-label">Saved adjusted close</div><div id="stock-price" class="quote-price">—</div><div id="stock-change" class="quote-change">—</div></div>
         </div>
         <div id="provider-quote" class="provider-quote" aria-live="polite" hidden>
@@ -51,11 +51,12 @@
           <button type="button" data-view="history" class="active" aria-pressed="true">Historical</button>
           <button type="button" data-view="intraday" aria-pressed="false"><span class="live-dot" aria-hidden="true"></span>Live market · 1m candles</button>
         </div>
-        <p id="candle-status" class="candle-status" role="status" aria-live="polite" hidden></p>
+        <p id="intraday-note" class="intraday-note" hidden>One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> update automatically when available. Exchange data may be delayed; check the chart's market status and time. These prices are separate from the adjusted backtest history.</p>
         <div class="range-bar" role="group" aria-label="Chart date range">
           <button type="button" data-range="1M">1M</button><button type="button" data-range="6M">6M</button><button type="button" data-range="1Y" class="active">1Y</button><button type="button" data-range="5Y">5Y</button><button type="button" data-range="ALL">All</button>
         </div>
-        <div class="chart-wrap stock-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close chart"></canvas></div>
+        <div class="chart-wrap stock-chart" id="history-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close chart"></canvas></div>
+        <div class="tradingview-chart" id="intraday-chart" aria-label="Live one-minute candlestick chart" hidden></div>
         <div class="stock-facts">
           <div><span>First available</span><strong id="fact-first">—</strong></div>
           <div><span>Latest available</span><strong id="fact-last">—</strong></div>

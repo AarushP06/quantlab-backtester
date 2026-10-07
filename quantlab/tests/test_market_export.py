@@ -70,8 +70,8 @@ def test_market_page_and_committed_snapshot_are_present():
     assert 'href="markets.html"' in (root / "static/index.html").read_text()
     assert 'id="symbol-search"' in page
     assert 'id="stock-chart"' in page
-    assert "Charts and stock rows use a historical snapshot" in page
-    assert "Provider quotes appear separately" in page
+    assert "The historical chart and stock rows use a saved snapshot" in page
+    assert "Minute candles and provider quotes appear separately" in page
     assert len(snapshot["symbols"]) == 30
     assert {"AMD", "ADBE", "CRM", "NFLX", "ORCL", "BAC", "KO", "PEP", "DIS", "MCD"}.issubset(snapshot["symbols"])
     assert snapshot["as_of"] == "2026-09-25"
