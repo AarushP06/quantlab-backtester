@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import os
 from io import BytesIO
 from pathlib import Path
@@ -17,10 +18,11 @@ from flask import Flask, jsonify, render_template, request
 from quantlab.core import BacktestEngine, CostModel, summarise
 from quantlab.strategies import BuyAndHold, MomentumRanking, MovingAverageCrossover
 
-from .quotes import GoogleQuoteService, QuoteUnavailable
+from .quotes import MarketQuoteService, QuoteUnavailable, UnknownSymbol
 
 DATASET = Path(__file__).resolve().parents[1] / "data/processed/universe.parquet"
 STATIC_SITE = Path(__file__).resolve().parents[1] / "static"
+MARKET_DATA = STATIC_SITE / "data/market.json"
 COST_LEVELS = {"0": CostModel(0, 0, 0), "5": CostModel()}
 STRATEGIES = {
     "ma": ("Moving average 20/50", lambda: MovingAverageCrossover(20, 50)),
@@ -62,7 +64,7 @@ def _metrics(result, baseline, cost_label: str) -> list[dict]:
 
 
 def create_app(
-    data_path: Path = DATASET, quote_service: GoogleQuoteService | None = None
+    data_path: Path = DATASET, quote_service: MarketQuoteService | None = None
 ) -> Flask:
     data_path = Path(data_path)
     if not data_path.is_file():
@@ -71,13 +73,20 @@ def create_app(
             "Provide data/processed/universe.parquet before starting the app."
         )
     app = Flask(__name__, static_folder=str(STATIC_SITE), static_url_path="")
-    quote_service = quote_service or GoogleQuoteService(os.environ.get("FINNHUB_API_KEY"))
+    if quote_service is None:
+        with MARKET_DATA.open(encoding="utf-8") as stream:
+            symbols = set(json.load(stream)["symbols"])
+        quote_service = MarketQuoteService(os.environ.get("FINNHUB_API_KEY"), symbols)
 
-    @app.get("/api/quote/GOOGL")
-    def google_quote():
+    @app.get("/api/quote/<symbol>")
+    def market_quote(symbol: str):
         try:
-            response = jsonify(quote_service.get())
+            response = jsonify(quote_service.get(symbol))
             response.headers["Cache-Control"] = "public, max-age=30"
+        except UnknownSymbol as exc:
+            response = jsonify({"error": str(exc)})
+            response.status_code = 404
+            response.headers["Cache-Control"] = "no-store"
         except QuoteUnavailable as exc:
             response = jsonify({"error": str(exc)})
             response.status_code = 503

@@ -2,10 +2,9 @@ let market;
 let selectedSymbol;
 let selectedRange = "1Y";
 let priceChart;
-let providerQuote;
-let quoteLoadedAt = 0;
-let quotePending = false;
-const QUOTE_API_URL = "https://quantlab-backtester.onrender.com/api/quote/GOOGL";
+const providerQuotes = new Map();
+const quotePending = new Set();
+const QUOTE_API_BASE = "https://quantlab-backtester.onrender.com/api/quote/";
 
 const byId = id => document.getElementById(id);
 const dollars = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
@@ -14,14 +13,14 @@ const ranges = {"1M": 1, "6M": 6, "1Y": 12, "5Y": 60};
 function money(value) { return Number.isFinite(value) ? dollars.format(value) : "—"; }
 function percent(value) { return Number.isFinite(value) ? `${value >= 0 ? "+" : ""}${(value * 100).toFixed(2)}%` : "—"; }
 
-function paintProviderQuote() {
-  if (!providerQuote || selectedSymbol !== "GOOGL") return;
-  byId("provider-price").textContent = money(providerQuote.price);
+function paintProviderQuote(quote) {
+  if (selectedSymbol !== quote.symbol) return;
+  byId("provider-price").textContent = money(quote.price);
   const change = byId("provider-change");
-  change.textContent = `${providerQuote.change >= 0 ? "+" : ""}${money(providerQuote.change)} (${percent(providerQuote.change_percent / 100)})`;
-  change.className = `provider-change ${providerQuote.change >= 0 ? "positive" : "negative"}`;
-  const quoteDate = providerQuote.quote_time || providerQuote.fetched_at;
-  const label = providerQuote.quote_time ? "Quote time" : "Checked";
+  change.textContent = `${quote.change >= 0 ? "+" : ""}${money(quote.change)} (${percent(quote.change_percent / 100)})`;
+  change.className = `provider-change ${quote.change >= 0 ? "positive" : "negative"}`;
+  const quoteDate = quote.quote_time || quote.fetched_at;
+  const label = quote.quote_time ? "Quote time" : "Checked";
   const formatted = new Date(quoteDate).toLocaleString("en-US", {
     timeZone: "America/New_York", year: "numeric", month: "short", day: "numeric",
     hour: "numeric", minute: "2-digit", timeZoneName: "short"
@@ -30,27 +29,30 @@ function paintProviderQuote() {
 }
 
 async function refreshProviderQuote() {
-  if (selectedSymbol !== "GOOGL" || quotePending) return;
-  if (providerQuote && Date.now() - quoteLoadedAt < 60000) {
-    paintProviderQuote();
+  const symbol = selectedSymbol;
+  if (quotePending.has(symbol)) return;
+  const cached = providerQuotes.get(symbol);
+  if (cached && Date.now() - cached.loadedAt < 60000) {
+    paintProviderQuote(cached.quote);
     return;
   }
-  quotePending = true;
+  quotePending.add(symbol);
   byId("provider-status").textContent = "Checking latest quote…";
   try {
-    const response = await fetch(QUOTE_API_URL, {cache: "no-store"});
+    const response = await fetch(`${QUOTE_API_BASE}${encodeURIComponent(symbol)}`, {cache: "no-store"});
     if (!response.ok) throw new Error(`Quote service returned ${response.status}`);
-    providerQuote = await response.json();
-    quoteLoadedAt = Date.now();
-    paintProviderQuote();
+    const quote = await response.json();
+    if (quote.symbol !== symbol) throw new Error("Quote symbol mismatch");
+    providerQuotes.set(symbol, {quote, loadedAt: Date.now()});
+    paintProviderQuote(quote);
   } catch (_error) {
-    if (selectedSymbol === "GOOGL") {
+    if (selectedSymbol === symbol) {
       byId("provider-price").textContent = "—";
       byId("provider-change").textContent = "—";
       byId("provider-status").textContent = "Latest quote unavailable. Saved history remains available.";
     }
   } finally {
-    quotePending = false;
+    quotePending.delete(symbol);
   }
 }
 
@@ -136,7 +138,11 @@ function renderList() {
 
 function renderStock() {
   const stock = market.symbols[selectedSymbol];
-  byId("provider-quote").hidden = selectedSymbol !== "GOOGL";
+  byId("provider-quote").hidden = false;
+  byId("provider-symbol").textContent = selectedSymbol;
+  byId("provider-price").textContent = "—";
+  byId("provider-change").textContent = "—";
+  byId("provider-status").textContent = "Checking latest quote…";
   byId("stock-title").textContent = selectedSymbol;
   byId("stock-dates").textContent = `History from ${stock.first_date} to ${stock.last_date}`;
   byId("stock-price").textContent = money(stock.last_close);
@@ -148,7 +154,7 @@ function renderStock() {
   byId("fact-low").textContent = money(stock.year_low);
   byId("fact-high").textContent = money(stock.year_high);
   renderChart(stock);
-  if (selectedSymbol === "GOOGL") refreshProviderQuote();
+  refreshProviderQuote();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -160,6 +166,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const symbols = Object.keys(market.symbols);
     if (!symbols.length) throw new Error("The market snapshot has no symbols.");
     byId("snapshot-date").textContent = market.as_of;
+    byId("hero-symbol-count").textContent = String(symbols.length);
+    byId("list-symbol-count").textContent = String(symbols.length);
     selectedSymbol = new URLSearchParams(window.location.search).get("symbol")?.toUpperCase();
     if (!market.symbols[selectedSymbol]) selectedSymbol = symbols[0];
     byId("symbol-search").addEventListener("input", renderList);
@@ -174,7 +182,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderStock);
     window.setInterval(() => {
-      if (selectedSymbol === "GOOGL") refreshProviderQuote();
+      refreshProviderQuote();
     }, 60000);
     renderList();
     renderStock();

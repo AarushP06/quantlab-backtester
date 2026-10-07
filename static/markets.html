@@ -22,17 +22,17 @@
       <div>
         <div class="eyebrow">Market data / US equities</div>
         <h1>Stocks</h1>
-        <p>Adjusted price history for the 20 companies in the Quantlab study.</p>
+        <p>Adjusted price history for <span id="hero-symbol-count">30</span> US stocks. The backtest study uses 20 of them.</p>
       </div>
       <div class="snapshot-label">Historical snapshot<br><strong id="snapshot-date">Loading…</strong></div>
     </header>
 
-    <aside class="notice" role="note">Historical snapshot, not live quotes. These 20 large caps were selected today, which biases historical comparisons upward. Past performance does not predict future returns.</aside>
+    <aside class="notice" role="note">Charts and stock rows use a historical snapshot. Provider quotes appear separately. These large caps were selected today, which biases historical comparisons upward. Past performance does not predict future returns.</aside>
     <p id="market-status" class="status" role="status" aria-live="polite">Loading saved market data…</p>
 
     <div class="market-layout">
       <section class="surface symbol-panel" aria-labelledby="universe-heading">
-        <div class="panel-heading"><div><div class="eyebrow">20 symbols</div><h2 id="universe-heading">Universe</h2></div></div>
+        <div class="panel-heading"><div><div class="eyebrow"><span id="list-symbol-count">30</span> symbols</div><h2 id="universe-heading">Market list</h2></div></div>
         <label class="search-label" for="symbol-search">Find a symbol<input id="symbol-search" type="search" placeholder="Search ticker" autocomplete="off"></label>
         <div id="symbol-list" class="symbol-list" aria-label="Stocks"></div>
       </section>
@@ -43,7 +43,7 @@
           <div class="quote"><div class="quote-label">Saved adjusted close</div><div id="stock-price" class="quote-price">—</div><div id="stock-change" class="quote-change">—</div></div>
         </div>
         <div id="provider-quote" class="provider-quote" aria-live="polite" hidden>
-          <div><div class="eyebrow">Latest provider quote · GOOGL</div><div id="provider-price" class="provider-price">—</div></div>
+          <div><div class="eyebrow">Latest provider quote · <span id="provider-symbol"></span></div><div id="provider-price" class="provider-price">—</div></div>
           <div><div id="provider-change" class="provider-change">—</div><div id="provider-status" class="provider-status">Loading quote…</div></div>
           <p class="provider-caption">Source: Finnhub. This quote is not included in the historical chart or backtests.</p>
         </div>

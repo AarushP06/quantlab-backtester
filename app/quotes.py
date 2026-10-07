@@ -1,8 +1,4 @@
-"""A small, cached adapter for one provider quote.
-
-The backtest snapshot stays fixed. This adapter is used only for the public
-GOOGL quote displayed alongside the historical market explorer.
-"""
+"""Cached provider quotes for symbols listed in the market explorer."""
 
 from __future__ import annotations
 
@@ -12,33 +8,45 @@ import time
 from datetime import datetime, timezone
 from threading import Lock
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-QUOTE_URL = "https://finnhub.io/api/v1/quote?symbol=GOOGL"
+QUOTE_URL = "https://finnhub.io/api/v1/quote"
 
 
 class QuoteUnavailable(Exception):
     """The upstream provider did not supply a usable quote."""
 
 
-class GoogleQuoteService:
-    def __init__(self, api_key: str | None, opener=urlopen, ttl_seconds: int = 60):
+class UnknownSymbol(Exception):
+    """A symbol is outside the configured public market explorer."""
+
+
+class MarketQuoteService:
+    def __init__(
+        self, api_key: str | None, symbols: set[str],
+        opener=urlopen, ttl_seconds: int = 60,
+    ):
         self.api_key = api_key
+        self.symbols = frozenset(symbols)
         self.opener = opener
         self.ttl_seconds = ttl_seconds
-        self._cached: dict | None = None
-        self._expires_at = 0.0
+        self._cached: dict[str, tuple[float, dict]] = {}
         self._lock = Lock()
 
-    def get(self) -> dict:
+    def get(self, symbol: str) -> dict:
+        symbol = symbol.upper()
+        if symbol not in self.symbols:
+            raise UnknownSymbol(f"Symbol {symbol!r} is not in the market explorer.")
         if not self.api_key:
             raise QuoteUnavailable("Quote provider is not configured.")
         with self._lock:
             now = time.monotonic()
-            if self._cached is not None and now < self._expires_at:
-                return self._cached
+            cached = self._cached.get(symbol)
+            if cached is not None and now < cached[0]:
+                return cached[1]
             request = Request(
-                QUOTE_URL,
+                f"{QUOTE_URL}?{urlencode({'symbol': symbol})}",
                 headers={"X-Finnhub-Token": self.api_key, "Accept": "application/json"},
             )
             try:
@@ -61,8 +69,8 @@ class GoogleQuoteService:
             ) as exc:
                 raise QuoteUnavailable("Quote provider is temporarily unavailable.") from exc
 
-            self._cached = {
-                "symbol": "GOOGL",
+            quote = {
+                "symbol": symbol,
                 "price": price,
                 "previous_close": previous,
                 "change": round(price - previous, 6),
@@ -71,5 +79,5 @@ class GoogleQuoteService:
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
                 "source": "Finnhub",
             }
-            self._expires_at = now + self.ttl_seconds
-            return self._cached
+            self._cached[symbol] = (now + self.ttl_seconds, quote)
+            return quote

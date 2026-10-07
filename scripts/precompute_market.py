@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 DATASET = Path("data/processed/universe.parquet")
+EXTRAS = Path("data/processed/market_extras.parquet")
 OUTPUT = Path("static/data/market.json")
 
 
@@ -17,7 +18,8 @@ def _number(value: object) -> float | None:
     return round(number, 6) if math.isfinite(number) else None
 
 
-def build_market_data(prices: pd.DataFrame, output: Path = OUTPUT) -> dict:
+def build_market_data(prices: pd.DataFrame, output: Path = OUTPUT,
+                      source: str = str(DATASET)) -> dict:
     """Save one dated snapshot; never request data during a page view."""
     if prices.empty or not isinstance(prices.columns, pd.MultiIndex):
         raise ValueError("Expected a non-empty (field, symbol) price frame")
@@ -49,7 +51,7 @@ def build_market_data(prices: pd.DataFrame, output: Path = OUTPUT) -> dict:
 
     payload = {
         "schema_version": 1,
-        "source": str(DATASET),
+        "source": source,
         "as_of": prices.index[-1].strftime("%Y-%m-%d"),
         "price_type": "Adjusted daily close",
         "symbols": symbols,
@@ -65,7 +67,16 @@ def build_market_data(prices: pd.DataFrame, output: Path = OUTPUT) -> dict:
 def main() -> None:
     if not DATASET.is_file():
         raise FileNotFoundError(f"Dataset not found: {DATASET}")
-    payload = build_market_data(pd.read_parquet(DATASET))
+    prices = pd.read_parquet(DATASET)
+    source = str(DATASET)
+    if EXTRAS.is_file():
+        extras = pd.read_parquet(EXTRAS)
+        overlap = prices.columns.intersection(extras.columns)
+        if not overlap.empty:
+            raise ValueError(f"Extra market symbols overlap the backtest universe: {overlap.tolist()}")
+        prices = pd.concat([prices, extras], axis=1).sort_index(axis=1)
+        source = f"{DATASET} + {EXTRAS}"
+    payload = build_market_data(prices, source=source)
     print(f"Exported {len(payload['symbols'])} symbols through {payload['as_of']} to {OUTPUT}")
 
 

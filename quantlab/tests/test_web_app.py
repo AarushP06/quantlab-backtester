@@ -72,7 +72,7 @@ def test_render_app_serves_market_explorer_and_saved_data(tmp_path):
     page = client.get("/markets.html?symbol=GOOGL")
     assert page.status_code == 200
     assert b'id="provider-quote"' in page.data
-    assert b"/markets.html?symbol=GOOGL" in client.get("/").data
+    assert b"/markets.html" in client.get("/").data
     assert client.get("/markets.js").status_code == 200
     snapshot = client.get("/data/market.json")
     assert snapshot.status_code == 200
