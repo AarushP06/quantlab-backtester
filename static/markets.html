@@ -47,6 +47,11 @@
           <div><div id="provider-change" class="provider-change">—</div><div id="provider-status" class="provider-status">Loading quote…</div></div>
           <p class="provider-caption">Source: Finnhub. This quote is not included in the historical chart or backtests.</p>
         </div>
+        <div class="chart-mode" role="group" aria-label="Market chart view">
+          <button type="button" data-view="history" class="active" aria-pressed="true">Historical</button>
+          <button type="button" data-view="intraday" aria-pressed="false"><span class="live-dot" aria-hidden="true"></span>Live market · 1m candles</button>
+        </div>
+        <p id="candle-status" class="candle-status" role="status" aria-live="polite" hidden></p>
         <div class="range-bar" role="group" aria-label="Chart date range">
           <button type="button" data-range="1M">1M</button><button type="button" data-range="6M">6M</button><button type="button" data-range="1Y" class="active">1Y</button><button type="button" data-range="5Y">5Y</button><button type="button" data-range="ALL">All</button>
         </div>

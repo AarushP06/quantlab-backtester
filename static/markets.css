@@ -34,7 +34,14 @@
 .provider-change { font-size: .85rem; font-weight: 750; }
 .provider-status { color: var(--muted); font-size: .76rem; margin-top: .2rem; }
 .provider-caption { grid-column: 1 / -1; color: var(--muted); font-size: .72rem; margin: .2rem 0 0; }
+.chart-mode { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: 1.15rem; }
+.chart-mode button { display: inline-flex; align-items: center; gap: .45rem; padding: .55rem .8rem; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); background: var(--surface); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.chart-mode button:hover, .chart-mode button.active { color: var(--text); border-color: var(--accent); background: var(--surface-muted); }
+.live-dot { width: .5rem; height: .5rem; border-radius: 50%; background: #167654; }
+.candle-status { color: var(--muted); font-size: .78rem; margin: .65rem 0 0; }
+.candle-status.error { color: var(--negative, #b44f4c); }
 .range-bar { display: flex; flex-wrap: wrap; gap: 1.3rem; border-bottom: 1px solid var(--border); margin-top: .5rem; padding: 0; }
+.range-bar[hidden] { display: none; }
 .range-bar button { cursor: pointer; color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: .7rem 0 .55rem; font: inherit; font-size: .8rem; font-weight: 700; }
 .range-bar button:hover, .range-bar button.active { color: var(--text); border-bottom-color: var(--accent); }
 .stock-chart { height: 400px; margin-top: 1rem; }

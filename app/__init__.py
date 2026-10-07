@@ -94,6 +94,22 @@ def create_app(
         response.headers["Access-Control-Allow-Origin"] = "*"
         return response
 
+    @app.get("/api/candles/<symbol>")
+    def market_candles(symbol: str):
+        try:
+            response = jsonify(quote_service.get_candles(symbol))
+            response.headers["Cache-Control"] = "public, max-age=30"
+        except UnknownSymbol as exc:
+            response = jsonify({"error": str(exc)})
+            response.status_code = 404
+            response.headers["Cache-Control"] = "no-store"
+        except QuoteUnavailable as exc:
+            response = jsonify({"error": str(exc)})
+            response.status_code = 503
+            response.headers["Cache-Control"] = "no-store"
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
+
     @app.get("/")
     def index():
         prices = pd.read_parquet(data_path)

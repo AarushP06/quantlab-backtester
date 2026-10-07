@@ -1,6 +1,7 @@
 """Selected-symbol quotes never leak a provider key or enter backtests."""
 
 import json
+from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
 
@@ -67,6 +68,55 @@ def test_quote_without_key_or_price_fails_cleanly(tmp_path):
     assert invalid.get("/api/quote/UNKNOWN").status_code == 404
 
 
+def test_minute_candles_show_latest_session_and_use_cache(tmp_path):
+    calls = []
+    stamps = [
+        int(datetime(2020, 1, 2, 15, 30, tzinfo=timezone.utc).timestamp()),
+        int(datetime(2020, 1, 3, 15, 30, tzinfo=timezone.utc).timestamp()),
+        int(datetime(2020, 1, 3, 15, 31, tzinfo=timezone.utc).timestamp()),
+    ]
+
+    def provider(request, timeout):
+        calls.append(request)
+        assert timeout == 8
+        assert "resolution=1" in request.full_url
+        assert "symbol=AAPL" in request.full_url
+        assert request.get_header("X-finnhub-token") == "private-test-key"
+        return BytesIO(json.dumps({
+            "s": "ok", "t": stamps, "o": [10, 11, 12],
+            "h": [11, 13, 14], "l": [9, 10, 11],
+            "c": [10.5, 12, 13], "v": [100, 200, 300],
+        }).encode())
+
+    client = _app_client(tmp_path, MarketQuoteService(
+        "private-test-key", {"AAPL"}, opener=provider
+    ))
+    first = client.get("/api/candles/AAPL")
+    second = client.get("/api/candles/AAPL")
+
+    assert first.status_code == second.status_code == 200
+    assert len(calls) == 1
+    assert first.json["session_date"] == "2020-01-03"
+    assert [bar["close"] for bar in first.json["candles"]] == [12, 13]
+    assert first.json["latest_bar_time"].startswith("2020-01-03T15:31")
+    assert "private-test-key" not in first.get_data(as_text=True)
+    assert first.headers["Access-Control-Allow-Origin"] == "*"
+
+
+def test_minute_candles_fail_clearly_without_provider_data(tmp_path):
+    def no_candles(_request, _timeout):
+        return BytesIO(b'{"s":"no_data"}')
+
+    client = _app_client(tmp_path, MarketQuoteService(
+        "key", {"AAPL"}, opener=no_candles
+    ))
+    assert client.get("/api/candles/UNKNOWN").status_code == 404
+    response = client.get("/api/candles/AAPL")
+    assert response.status_code == 503
+    assert "unavailable" in response.json["error"]
+    assert response.headers["Cache-Control"] == "no-store"
+
+
 def test_market_page_keeps_provider_quotes_separate_from_adjusted_history():
     root = Path(__file__).resolve().parents[2]
     html = (root / "static/markets.html").read_text()
@@ -74,3 +124,5 @@ def test_market_page_keeps_provider_quotes_separate_from_adjusted_history():
     assert 'id="provider-quote"' in html
     assert "not included in the historical chart" in html
     assert "/api/quote/" in script
+    assert 'data-view="intraday"' in html
+    assert "/api/candles/" in script
