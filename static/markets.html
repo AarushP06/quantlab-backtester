@@ -7,27 +7,27 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="markets.css">
-  <title>Market explorer · Quantlab</title>
+  <title>Stocks · Quantlab</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
   <script src="markets.js" defer></script>
 </head>
 <body>
   <main>
     <nav class="app-nav" aria-label="Main navigation">
-      <a class="brand" href="index.html">Quantlab<span class="brand-mark">●</span></a>
+      <a class="brand" href="index.html">Quantlab</a>
       <div class="nav-links"><a href="markets.html" aria-current="page">Markets</a><a href="index.html">Backtest lab</a></div>
     </nav>
 
     <header class="market-hero">
       <div>
-        <div class="eyebrow">Explore the dataset</div>
-        <h1>Market explorer</h1>
-        <p>Browse adjusted daily prices for the 20 US stocks in this backtest universe. Select a symbol to inspect its history.</p>
+        <div class="eyebrow">Market data / US equities</div>
+        <h1>Stocks</h1>
+        <p>Adjusted price history for the 20 companies in the Quantlab study.</p>
       </div>
       <div class="snapshot-label">Historical snapshot<br><strong id="snapshot-date">Loading…</strong></div>
     </header>
 
-    <aside class="notice" role="note">These are saved historical prices, not live quotes. The 20 large caps were selected today, which biases historical comparisons upward. Past performance does not predict future returns.</aside>
+    <aside class="notice" role="note">Historical snapshot, not live quotes. These 20 large caps were selected today, which biases historical comparisons upward. Past performance does not predict future returns.</aside>
     <p id="market-status" class="status" role="status" aria-live="polite">Loading saved market data…</p>
 
     <div class="market-layout">
@@ -40,7 +40,12 @@
       <section class="surface stock-panel" aria-labelledby="stock-title">
         <div class="stock-header">
           <div><div class="eyebrow">Adjusted price history · USD</div><h2 id="stock-title">Select a stock</h2><p id="stock-dates" class="stock-dates"></p></div>
-          <div class="quote"><div id="stock-price" class="quote-price">—</div><div id="stock-change" class="quote-change">—</div></div>
+          <div class="quote"><div class="quote-label">Saved adjusted close</div><div id="stock-price" class="quote-price">—</div><div id="stock-change" class="quote-change">—</div></div>
+        </div>
+        <div id="provider-quote" class="provider-quote" aria-live="polite" hidden>
+          <div><div class="eyebrow">Latest provider quote · GOOGL</div><div id="provider-price" class="provider-price">—</div></div>
+          <div><div id="provider-change" class="provider-change">—</div><div id="provider-status" class="provider-status">Loading quote…</div></div>
+          <p class="provider-caption">Source: Finnhub. This quote is not included in the historical chart or backtests.</p>
         </div>
         <div class="range-bar" role="group" aria-label="Chart date range">
           <button type="button" data-range="1M">1M</button><button type="button" data-range="6M">6M</button><button type="button" data-range="1Y" class="active">1Y</button><button type="button" data-range="5Y">5Y</button><button type="button" data-range="ALL">All</button>

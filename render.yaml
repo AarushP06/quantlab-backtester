@@ -5,3 +5,6 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /
+    envVars:
+      - key: FINNHUB_API_KEY
+        sync: false

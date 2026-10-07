@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import os
 from io import BytesIO
 from pathlib import Path
 
@@ -11,10 +12,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
-from flask import Flask, render_template, request
+from flask import Flask, jsonify, render_template, request
 
 from quantlab.core import BacktestEngine, CostModel, summarise
 from quantlab.strategies import BuyAndHold, MomentumRanking, MovingAverageCrossover
+
+from .quotes import GoogleQuoteService, QuoteUnavailable
 
 DATASET = Path(__file__).resolve().parents[1] / "data/processed/universe.parquet"
 COST_LEVELS = {"0": CostModel(0, 0, 0), "5": CostModel()}
@@ -57,7 +60,9 @@ def _metrics(result, baseline, cost_label: str) -> list[dict]:
     return rows
 
 
-def create_app(data_path: Path = DATASET) -> Flask:
+def create_app(
+    data_path: Path = DATASET, quote_service: GoogleQuoteService | None = None
+) -> Flask:
     data_path = Path(data_path)
     if not data_path.is_file():
         raise FileNotFoundError(
@@ -65,6 +70,19 @@ def create_app(data_path: Path = DATASET) -> Flask:
             "Provide data/processed/universe.parquet before starting the app."
         )
     app = Flask(__name__)
+    quote_service = quote_service or GoogleQuoteService(os.environ.get("FINNHUB_API_KEY"))
+
+    @app.get("/api/quote/GOOGL")
+    def google_quote():
+        try:
+            response = jsonify(quote_service.get())
+            response.headers["Cache-Control"] = "public, max-age=30"
+        except QuoteUnavailable as exc:
+            response = jsonify({"error": str(exc)})
+            response.status_code = 503
+            response.headers["Cache-Control"] = "no-store"
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
 
     @app.get("/")
     def index():
