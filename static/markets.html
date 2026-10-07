@@ -33,22 +33,13 @@
     <section class="surface asset-panel" aria-labelledby="asset-heading">
       <div class="asset-heading">
         <div><div class="eyebrow">Market explorer</div><h2 id="asset-heading">Choose a market</h2></div>
-        <p>Browse stocks or open the Gold &amp; Bitcoin category.</p>
+        <p>One list for stocks, gold, and Bitcoin.</p>
       </div>
       <div class="asset-workspace">
         <aside class="asset-sidebar" aria-label="Market selector">
-          <div class="eyebrow">Browse</div>
-          <button id="assets-toggle" class="category-toggle" type="button" aria-expanded="true" aria-controls="asset-list">
-            <span>Gold &amp; Bitcoin</span><span class="category-count">2</span><span class="category-chevron" aria-hidden="true">⌄</span>
-          </button>
-          <div id="asset-list" class="asset-list" role="group" aria-label="Gold and Bitcoin"></div>
-          <button id="stocks-toggle" class="category-toggle" type="button" aria-expanded="false" aria-controls="stock-picker">
-            <span>US stocks</span><span class="category-count" id="list-symbol-count">30</span><span class="category-chevron" aria-hidden="true">⌄</span>
-          </button>
-          <div id="stock-picker" class="stock-picker" hidden>
-            <label class="search-label" for="symbol-search">Find a symbol<input id="symbol-search" type="search" placeholder="Search ticker" autocomplete="off"></label>
-            <div id="symbol-list" class="symbol-list" aria-label="Stocks"></div>
-          </div>
+          <div class="sidebar-heading"><span class="eyebrow">All markets</span><span class="category-count" id="list-symbol-count">32</span></div>
+          <label class="search-label" for="symbol-search">Find a market<input id="symbol-search" type="search" placeholder="Search ticker or name" autocomplete="off"></label>
+          <div id="symbol-list" class="symbol-list" aria-label="Markets"></div>
         </aside>
         <div class="browser-main">
           <div id="asset-main" class="asset-main">

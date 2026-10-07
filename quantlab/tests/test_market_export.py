@@ -83,18 +83,17 @@ def test_other_markets_are_labeled_chart_only_and_outside_stock_snapshot():
     script = (root / "static/markets.js").read_text()
     snapshot = json.loads((root / "static/data/market.json").read_text())
 
-    assert 'id="asset-list"' in page
     assert 'id="asset-chart"' in page
     assert 'class="asset-workspace"' in page
     assert 'class="asset-sidebar"' in page
-    assert 'id="assets-toggle"' in page
-    assert 'id="stocks-toggle"' in page
-    assert 'id="stock-picker"' in page
     assert 'id="stock-main"' in page
     assert page.count('class="surface asset-panel"') == 1
     assert 'class="market-layout"' not in page
-    assert page.index('id="asset-list"') < page.index('id="asset-chart"')
-    assert page.index('id="assets-toggle"') < page.index('id="stocks-toggle"')
+    # Stocks, gold, and Bitcoin share one searchable list instead of separate categories.
+    assert page.count('id="symbol-list"') == 1
+    assert page.index('id="symbol-list"') < page.index('id="asset-chart"')
+    for removed in ('id="asset-list"', 'id="assets-toggle"', 'id="stocks-toggle"', 'id="stock-picker"'):
+        assert removed not in page
     assert "Gold and Bitcoin are chart-only here" in page
     assert "Data may be delayed" in page
     for symbol in ("OANDA:XAUUSD", "BITSTAMP:BTCUSD"):
