@@ -29,10 +29,24 @@
 
     <section class="surface toolbar" aria-label="Comparison settings">
       <label for="strategy">Strategy<select id="strategy"></select></label>
-      <label for="baseline">Buy-and-hold baseline<select id="baseline"></select></label>
+      <label for="baseline">Buy-and-hold baseline<select id="baseline"></select><span id="baseline-help" class="control-help"></span></label>
       <label for="cost">Trading costs<select id="cost"></select></label>
     </section>
     <p id="data-status" class="status" role="status" aria-live="polite">Loading historical results…</p>
+
+    <section class="surface section verdict" aria-labelledby="verdict-heading">
+      <div class="section-head">
+        <div><div class="eyebrow">Out-of-sample record</div><h2 id="verdict-heading">Strategy versus buy-and-hold</h2></div>
+        <p>Each test year starts a new portfolio. The 2026 test year is partial.</p>
+      </div>
+      <p id="verdict-line" class="verdict-line">Loading fold comparison…</p>
+      <div class="verdict-grid">
+        <div><span>Test years ahead</span><strong id="verdict-wins">—</strong></div>
+        <div><span>Average test-fold CAGR gap</span><strong id="verdict-gap">—</strong></div>
+        <div><span>Average max drawdown gap</span><strong id="verdict-drawdown">—</strong></div>
+      </div>
+      <p class="caption">Gaps are strategy minus the selected baseline, in percentage points. A positive drawdown gap means a shallower drawdown. These are simple averages, not compounded returns.</p>
+    </section>
 
     <section class="surface section" aria-labelledby="sim-heading">
       <div class="section-head">
@@ -72,6 +86,7 @@
           </article>
         </div>
       </div>
+      <p id="sim-difference" class="sim-difference" aria-live="polite"></p>
       <p id="sim-status" class="status" role="status" aria-live="polite"></p>
       <div class="chart-wrap"><canvas id="sim-chart" role="img" aria-label="Historical strategy and buy-and-hold equity curves for the entered amount"></canvas></div>
       <p class="caption">Both lines use the same starting amount and the same dates. Values scale a fresh-window backtest; they are historical simulations, not forecasts.</p>
@@ -85,6 +100,9 @@
         </div>
         <p>Three training years followed by one test year; 2026 is partial.</p>
       </div>
+      <h3>Strategy return minus buy-and-hold, by test year</h3>
+      <p class="caption fold-hint">Select a bar or table row to inspect that year's equity curves and metrics below. Positive bars mean the strategy finished ahead.</p>
+      <div class="chart-wrap fold-chart"><canvas id="fold-chart" role="img" aria-label="Strategy minus buy-and-hold CAGR by test year"></canvas></div>
       <label class="period-control" for="period">Chart period<select id="period"></select></label>
       <div class="chart-wrap explorer"><canvas id="period-chart" role="img" aria-label="Selected period strategy and buy-and-hold equity curves"></canvas></div>
       <p class="caption">The full-period chart runs continuously. Each test fold starts afresh with $100,000.</p>

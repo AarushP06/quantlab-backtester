@@ -1,6 +1,7 @@
 let manifest;
 let simulatorChart;
 let explorerChart;
+let foldChart;
 let renderToken = 0;
 const responseCache = new Map();
 
@@ -22,6 +23,20 @@ function percent(value) {
 
 function decimal(value) {
   return Number.isFinite(value) ? value.toFixed(2) : "—";
+}
+
+function points(value) {
+  return Number.isFinite(value) ? `${value >= 0 ? "+" : ""}${(value * 100).toFixed(2)} pp` : "—";
+}
+
+function testPeriods() {
+  return manifest.periods.filter(period => period.id !== "full");
+}
+
+function baselineHelp() {
+  byId("baseline-help").textContent = byId("baseline").value === "buy_hold_on_listing"
+    ? "Starts in available stocks and rebalances only when a new stock first trades."
+    : "Buys on the first bar, then holds the filled shares; unfilled allocations stay in cash.";
 }
 
 function textCell(row, value, tag = "td") {
@@ -144,6 +159,7 @@ function renderSimulator(strategyResults, baselineResults, sharedDates, names) {
     }
     if (simulatorChart) simulatorChart.destroy();
     simulatorChart = null;
+    byId("sim-difference").hidden = true;
     return;
   }
   status.classList.remove("error");
@@ -157,12 +173,36 @@ function renderSimulator(strategyResults, baselineResults, sharedDates, names) {
   }
   renderOutcome("sim-strategy", names.strategy, strategy, amount);
   renderOutcome("sim-baseline", names.baseline, baseline, amount);
+  const difference = amount * (strategy.final_per_dollar - baseline.final_per_dollar);
+  const differenceLabel = Math.abs(difference) < 0.005 ? "matched" : difference > 0 ? "finished above" : "finished below";
+  byId("sim-difference").textContent = differenceLabel === "matched"
+    ? "Both selections finished at the same historical value."
+    : `${names.strategy} ${differenceLabel} buy-and-hold by ${money(Math.abs(difference))} in this window.`;
+  byId("sim-difference").hidden = false;
   simulatorChart = drawChart(
     "sim-chart", simulatorChart, dates,
     strategy.equity_per_dollar.map(value => value * amount),
     baseline.equity_per_dollar.map(value => value * amount), names
   );
   status.textContent = `${window.first_date} to ${window.last_date} · ${window.bars.toLocaleString()} trading bars. The final year may be partial.`;
+}
+
+function renderVerdict(strategyResults, baselineResults, names, cost) {
+  const folds = testPeriods();
+  const differences = folds.map(period => {
+    const strategy = strategyResults.periods[period.id].metrics;
+    const baseline = baselineResults.periods[period.id].metrics;
+    return {cagr: strategy.cagr - baseline.cagr,
+      drawdown: strategy.max_drawdown - baseline.max_drawdown};
+  });
+  const wins = differences.filter(item => item.cagr > 0).length;
+  const average = key => differences.reduce((sum, item) => sum + item[key], 0) / differences.length;
+  byId("verdict-wins").textContent = `${wins} / ${folds.length}`;
+  byId("verdict-gap").textContent = points(average("cagr"));
+  byId("verdict-drawdown").textContent = points(average("drawdown"));
+  byId("verdict-line").textContent = names.strategy === names.baseline
+    ? "The same portfolio is selected on both sides of the comparison."
+    : `${names.strategy} beat ${names.baseline} in ${wins} of ${folds.length} test years at ${cost} bps.`;
 }
 
 function renderPeriodMetrics(strategy, baseline, names) {
@@ -188,14 +228,34 @@ function renderPeriodMetrics(strategy, baseline, names) {
   }
 }
 
-function renderFolds(strategyResults, baselineResults) {
+function selectPeriod(periodId, strategyResults, baselineResults, names) {
+  byId("period").value = periodId;
+  renderExplorer(strategyResults, baselineResults, names);
+  renderFolds(strategyResults, baselineResults, names);
+  renderFoldChart(strategyResults, baselineResults, names);
+}
+
+function renderFolds(strategyResults, baselineResults, names) {
   const body = byId("folds-body");
   body.replaceChildren();
-  for (const period of manifest.periods.filter(item => item.id !== "full")) {
+  for (const period of testPeriods()) {
     const strategy = strategyResults.periods[period.id].metrics;
     const baseline = baselineResults.periods[period.id].metrics;
     const row = document.createElement("tr");
-    textCell(row, period.id);
+    row.className = "fold-row";
+    row.classList.toggle("selected", period.id === byId("period").value);
+    const yearCell = document.createElement("td");
+    const yearButton = document.createElement("button");
+    yearButton.type = "button";
+    yearButton.className = "fold-link";
+    yearButton.textContent = period.id;
+    yearButton.setAttribute("aria-label", `Inspect ${period.id} test year`);
+    yearButton.addEventListener("click", event => {
+      event.stopPropagation();
+      selectPeriod(period.id, strategyResults, baselineResults, names);
+    });
+    yearCell.appendChild(yearButton);
+    row.appendChild(yearCell);
     textCell(row, percent(strategy.cagr));
     textCell(row, percent(baseline.cagr));
     textCell(row, `${decimal((strategy.cagr - baseline.cagr) * 100)} pp`);
@@ -203,8 +263,46 @@ function renderFolds(strategyResults, baselineResults) {
     textCell(row, decimal(baseline.sharpe));
     textCell(row, percent(strategy.max_drawdown));
     textCell(row, percent(baseline.max_drawdown));
+    row.addEventListener("click", () => selectPeriod(period.id, strategyResults, baselineResults, names));
     body.appendChild(row);
   }
+}
+
+function renderFoldChart(strategyResults, baselineResults, names) {
+  if (foldChart) foldChart.destroy();
+  const folds = testPeriods();
+  const gaps = folds.map(period =>
+    (strategyResults.periods[period.id].metrics.cagr -
+      baselineResults.periods[period.id].metrics.cagr) * 100
+  );
+  const selected = byId("period").value;
+  foldChart = new Chart(byId("fold-chart"), {
+    type: "bar",
+    data: {labels: folds.map(period => period.id), datasets: [{
+      label: "CAGR gap (percentage points)", data: gaps,
+      backgroundColor: gaps.map(value => value >= 0 ? chartColor("--accent") : "#b85a52"),
+      borderColor: chartColor("--text"),
+      borderWidth: folds.map(period => period.id === selected ? 2 : 0)
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      onClick: (_event, elements) => {
+        if (elements.length) {
+          selectPeriod(folds[elements[0].index].id, strategyResults, baselineResults, names);
+        }
+      },
+      plugins: {
+        legend: {display: false},
+        tooltip: {callbacks: {label: context => `${points(context.parsed.y / 100)} versus ${names.baseline}`}}
+      },
+      scales: {
+        x: {ticks: {color: chartColor("--muted"), maxRotation: 0, autoSkip: true,
+          maxTicksLimit: 10}, grid: {display: false}},
+        y: {ticks: {color: chartColor("--muted"), callback: value => `${value} pp`},
+          grid: {color: chartColor("--grid")}}
+      }
+    }
+  });
 }
 
 function renderExplorer(strategyResults, baselineResults, names) {
@@ -217,7 +315,6 @@ function renderExplorer(strategyResults, baselineResults, names) {
     strategy.equity, baseline.equity, names
   );
   renderPeriodMetrics(strategy, baseline, names);
-  renderFolds(strategyResults, baselineResults);
 }
 
 async function render() {
@@ -240,8 +337,12 @@ async function render() {
       loadJson(manifest.windows_file)
     ]);
     if (token !== renderToken) return;
+    baselineHelp();
+    renderVerdict(strategyPeriods, baselinePeriods, names, cost);
     renderSimulator(strategyWindows, baselineWindows, dates, names);
     renderExplorer(strategyPeriods, baselinePeriods, names);
+    renderFolds(strategyPeriods, baselinePeriods, names);
+    renderFoldChart(strategyPeriods, baselinePeriods, names);
     status.textContent = `${manifest.bars.toLocaleString()} adjusted daily bars · ${manifest.symbols} symbols · ${manifest.first_date} to ${manifest.last_date}. All results were precomputed.`;
   } catch (error) {
     if (token === renderToken) {

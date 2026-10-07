@@ -139,3 +139,29 @@ def test_committed_static_data_covers_full_period_and_19_folds():
             for key, window in simulator.items():
                 assert len(window["equity_per_dollar"]) == len(shared_dates[key])
                 assert window["equity_per_dollar"][-1] == window["final_per_dollar"]
+
+
+def test_lab_verdict_uses_existing_test_folds_and_has_clickable_years():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    html = (root / "static/index.html").read_text()
+    script = (root / "static/app.js").read_text()
+    data = root / "static/data"
+    manifest = json.loads((data / "manifest.json").read_text())
+    strategy = json.loads((data / "ma_20_50_5.json").read_text())["periods"]
+    baseline = json.loads((data / "buy_hold_never_5.json").read_text())["periods"]
+    years = [period["id"] for period in manifest["periods"] if period["id"] != "full"]
+    gaps = [strategy[year]["metrics"]["cagr"] - baseline[year]["metrics"]["cagr"]
+            for year in years]
+
+    assert len(years) == 19
+    assert sum(gap > 0 for gap in gaps) == 4
+    assert sum(gaps) / len(gaps) < 0
+    assert 'id="verdict-line"' in html
+    assert 'id="verdict-wins"' in html
+    assert 'id="fold-chart"' in html
+    assert 'id="sim-difference"' in html
+    assert 'id="baseline-help"' in html
+    assert "renderVerdict(strategyPeriods, baselinePeriods" in script
+    assert "selectPeriod(folds[elements[0].index].id" in script
