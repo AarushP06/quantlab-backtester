@@ -2,7 +2,7 @@ let market;
 let selectedSymbol;
 let selectedRange = "1Y";
 let selectedView = "history";
-let selectedAsset = "MNQ";
+let selectedAsset = "GOLD";
 let selectedMarketKind = "asset";
 let priceChart;
 const providerQuotes = new Map();
@@ -21,8 +21,6 @@ const TRADINGVIEW_SYMBOLS = {
   V: "NYSE:V", WMT: "NASDAQ:WMT", XOM: "NYSE:XOM"
 };
 const OTHER_MARKETS = [
-  {id: "MNQ", label: "Micro Nasdaq", title: "Micro E-mini Nasdaq-100 futures", type: "CME continuous futures", symbol: "CME_MINI:MNQ1!"},
-  {id: "NQ", label: "E-mini Nasdaq", title: "E-mini Nasdaq-100 futures", type: "CME continuous futures", symbol: "CME_MINI:NQ1!"},
   {id: "GOLD", label: "Spot gold", title: "Gold spot / US dollar", type: "Spot metal quote", symbol: "OANDA:XAUUSD"},
   {id: "BTC", label: "Bitcoin", title: "Bitcoin / US dollar", type: "Bitstamp spot market", symbol: "BITSTAMP:BTCUSD"}
 ];
@@ -170,12 +168,24 @@ function showMarket(kind) {
   byId("stock-main").hidden = kind !== "stock";
   if (kind === "stock") byId("asset-chart").replaceChildren();
   else byId("intraday-chart").replaceChildren();
+  byId("assets-toggle").classList.toggle("active", kind === "asset");
   byId("stocks-toggle").classList.toggle("active", kind === "stock");
   for (const button of document.querySelectorAll(".asset-button")) {
     button.setAttribute("aria-pressed", String(kind === "asset" && button.dataset.asset === selectedAsset));
   }
   for (const row of document.querySelectorAll(".symbol-row")) {
     row.setAttribute("aria-pressed", String(kind === "stock" && row.dataset.symbol === selectedSymbol));
+  }
+}
+
+function setOpenCategory(category) {
+  for (const [name, toggleId, listId] of [
+    ["assets", "assets-toggle", "asset-list"],
+    ["stocks", "stocks-toggle", "stock-picker"]
+  ]) {
+    const expanded = category === name;
+    byId(toggleId).setAttribute("aria-expanded", String(expanded));
+    byId(listId).hidden = !expanded;
   }
 }
 
@@ -199,14 +209,11 @@ function renderAssetList() {
       url.searchParams.set("asset", asset.id);
       url.searchParams.delete("symbol");
       history.replaceState(null, "", url);
+      setOpenCategory("assets");
       showMarket("asset");
       renderAsset();
     });
     list.append(button);
-  }
-  const activeButton = list.querySelector('[aria-pressed="true"]');
-  if (activeButton) {
-    list.scrollLeft = activeButton.getBoundingClientRect().left - list.getBoundingClientRect().left;
   }
 }
 
@@ -261,6 +268,7 @@ function renderList() {
       url.searchParams.set("symbol", symbol);
       url.searchParams.delete("asset");
       history.replaceState(null, "", url);
+      setOpenCategory("stocks");
       showMarket("stock");
       renderList();
       renderStock();
@@ -316,12 +324,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (validAsset) selectedAsset = requestedAsset;
     selectedMarketKind = market.symbols[requestedSymbol] && !validAsset ? "stock" : "asset";
     byId("symbol-search").addEventListener("input", renderList);
-    byId("stocks-toggle").addEventListener("click", () => {
-      const toggle = byId("stocks-toggle");
-      const expanded = toggle.getAttribute("aria-expanded") !== "true";
-      toggle.setAttribute("aria-expanded", String(expanded));
-      byId("stock-picker").hidden = !expanded;
-    });
+    for (const [name, toggleId] of [["assets", "assets-toggle"], ["stocks", "stocks-toggle"]]) {
+      byId(toggleId).addEventListener("click", () => {
+        const expanded = byId(toggleId).getAttribute("aria-expanded") === "true";
+        setOpenCategory(expanded ? null : name);
+      });
+    }
     for (const button of document.querySelectorAll("[data-view]")) {
       button.addEventListener("click", () => setChartView(button.dataset.view));
     }
@@ -344,12 +352,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderList();
     renderAssetList();
     if (selectedMarketKind === "stock") {
-      byId("stocks-toggle").setAttribute("aria-expanded", "true");
-      byId("stock-picker").hidden = false;
+      setOpenCategory("stocks");
       showMarket("stock");
       renderStock();
       if (params.get("view") === "intraday") setChartView("intraday");
     } else {
+      setOpenCategory("assets");
       showMarket("asset");
       renderAsset();
     }

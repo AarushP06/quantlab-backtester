@@ -20,9 +20,9 @@
 
     <header class="market-hero">
       <div>
-        <div class="eyebrow">Market data / stocks and other markets</div>
+        <div class="eyebrow">Market data / stocks, gold, and Bitcoin</div>
         <h1>Markets</h1>
-        <p>Explore <span id="hero-symbol-count">30</span> US stocks, Nasdaq futures, gold, and Bitcoin. The backtest study uses 20 stocks.</p>
+        <p>Explore <span id="hero-symbol-count">30</span> US stocks, gold, and Bitcoin. The backtest study uses 20 stocks.</p>
       </div>
       <div class="snapshot-label">Historical snapshot<br><strong id="snapshot-date">Loading…</strong></div>
     </header>
@@ -33,14 +33,17 @@
     <section class="surface asset-panel" aria-labelledby="asset-heading">
       <div class="asset-heading">
         <div><div class="eyebrow">Market explorer</div><h2 id="asset-heading">Choose a market</h2></div>
-        <p>One watchlist for stocks, futures, gold, and Bitcoin.</p>
+        <p>Browse stocks or open the Gold &amp; Bitcoin category.</p>
       </div>
       <div class="asset-workspace">
         <aside class="asset-sidebar" aria-label="Market selector">
-          <div class="eyebrow">Markets</div>
-          <div id="asset-list" class="asset-list" role="group" aria-label="Futures, gold, and Bitcoin"></div>
-          <button id="stocks-toggle" class="stocks-toggle" type="button" aria-expanded="false" aria-controls="stock-picker">
-            <span>US stocks</span><span class="stocks-count" id="list-symbol-count">30</span><span class="stocks-chevron" aria-hidden="true">⌄</span>
+          <div class="eyebrow">Browse</div>
+          <button id="assets-toggle" class="category-toggle" type="button" aria-expanded="true" aria-controls="asset-list">
+            <span>Gold &amp; Bitcoin</span><span class="category-count">2</span><span class="category-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div id="asset-list" class="asset-list" role="group" aria-label="Gold and Bitcoin"></div>
+          <button id="stocks-toggle" class="category-toggle" type="button" aria-expanded="false" aria-controls="stock-picker">
+            <span>US stocks</span><span class="category-count" id="list-symbol-count">30</span><span class="category-chevron" aria-hidden="true">⌄</span>
           </button>
           <div id="stock-picker" class="stock-picker" hidden>
             <label class="search-label" for="symbol-search">Find a symbol<input id="symbol-search" type="search" placeholder="Search ticker" autocomplete="off"></label>
@@ -53,7 +56,7 @@
               <div><div id="asset-type" class="eyebrow"></div><h3 id="asset-title">Loading chart…</h3><p id="asset-symbol" class="asset-symbol"></p></div>
               <a id="asset-full-chart" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a>
             </div>
-            <p class="asset-note">One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>. Exchange data may be delayed or require a subscription. These four chart-only markets are not in the stock backtests. MNQ and NQ use continuous futures symbols, not a specific expiring contract.</p>
+            <p class="asset-note">One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>. Data may be delayed or require a subscription. Gold and Bitcoin are chart-only here and are not in the stock backtests.</p>
             <div id="asset-chart" class="tradingview-chart asset-chart" aria-label="One-minute chart for selected market"></div>
           </div>
           <section id="stock-main" class="stock-panel" hidden aria-labelledby="stock-title">

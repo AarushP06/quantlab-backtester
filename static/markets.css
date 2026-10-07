@@ -13,13 +13,14 @@
 .asset-button[aria-pressed="true"] { border-color: var(--border); border-left-color: var(--accent); background: var(--surface); }
 .asset-button strong { font-size: .98rem; letter-spacing: -.015em; }
 .asset-button span { color: var(--muted); font-size: .75rem; line-height: 1.3; }
-.stocks-toggle { display: flex; align-items: center; width: 100%; gap: .45rem; margin-top: 1rem; padding: .85rem .7rem; border: 0; border-top: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; font-size: .9rem; font-weight: 750; text-align: left; cursor: pointer; }
-.stocks-toggle:hover, .stocks-toggle.active { color: var(--accent); }
-.stocks-count { color: var(--muted); font-size: .73rem; font-weight: 600; }
-.stocks-chevron { margin-left: auto; font-size: 1.2rem; line-height: 1; transition: transform .2s; }
-.stocks-toggle[aria-expanded="true"] .stocks-chevron { transform: rotate(180deg); }
+.category-toggle { display: flex; align-items: center; width: 100%; gap: .45rem; margin-top: 1rem; padding: .85rem .7rem; border: 0; border-top: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; font-size: .9rem; font-weight: 750; text-align: left; cursor: pointer; }
+.category-toggle:hover, .category-toggle.active { color: var(--accent); }
+.category-count { color: var(--muted); font-size: .73rem; font-weight: 600; }
+.category-chevron { margin-left: auto; font-size: 1.2rem; line-height: 1; transition: transform .2s; }
+.category-toggle[aria-expanded="true"] .category-chevron { transform: rotate(180deg); }
+#assets-toggle { margin-top: .35rem; border-top: 0; }
 .stock-picker { min-width: 0; padding: .3rem .35rem 0; }
-.stock-picker[hidden], #asset-main[hidden], #stock-main[hidden] { display: none; }
+.stock-picker[hidden], .asset-list[hidden], #asset-main[hidden], #stock-main[hidden] { display: none; }
 .stock-picker .search-label { margin: 0 .35rem .5rem; }
 .browser-main { min-width: 0; }
 .asset-main { min-width: 0; padding: 1.2rem; }
@@ -86,7 +87,7 @@
   .asset-sidebar .eyebrow { margin: 0 0 .4rem; padding: 0 .2rem; }
   .asset-list { width: 100%; grid-auto-flow: column; grid-auto-columns: minmax(142px, 1fr); gap: .4rem; overflow-x: auto; scroll-snap-type: x proximity; }
   .asset-button { scroll-snap-align: start; padding: .65rem .7rem; }
-  .stocks-toggle { margin-top: .5rem; }
+  .category-toggle { margin-top: .5rem; }
   .symbol-list { max-height: 260px; }
 }
 @media (max-width: 620px) {
