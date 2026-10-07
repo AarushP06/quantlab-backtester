@@ -7,7 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="markets.css">
-  <title>Stocks · Quantlab</title>
+  <title>Markets · Quantlab</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
   <script src="markets.js" defer></script>
 </head>
@@ -20,16 +20,31 @@
 
     <header class="market-hero">
       <div>
-        <div class="eyebrow">Market data / US equities</div>
-        <h1>Stocks</h1>
-        <p>Adjusted price history for <span id="hero-symbol-count">30</span> US stocks. The backtest study uses 20 of them.</p>
+        <div class="eyebrow">Market data / stocks and other markets</div>
+        <h1>Markets</h1>
+        <p>Explore <span id="hero-symbol-count">30</span> US stocks, Nasdaq futures, the S&amp;P 500, gold, Bitcoin, and oil. The backtest study uses 20 stocks.</p>
       </div>
       <div class="snapshot-label">Historical snapshot<br><strong id="snapshot-date">Loading…</strong></div>
     </header>
 
-    <aside class="notice" role="note">The historical chart and stock rows use a saved snapshot. Minute candles and provider quotes appear separately. These large caps were selected today, which biases historical comparisons upward. Past performance does not predict future returns.</aside>
+    <aside class="notice" role="note">Stock history and backtests use a saved snapshot. Minute charts and provider quotes appear separately and may be delayed. The backtest stocks were selected today, which biases historical comparisons upward. Past performance does not predict future returns.</aside>
     <p id="market-status" class="status" role="status" aria-live="polite">Loading saved market data…</p>
 
+    <section class="surface asset-panel" aria-labelledby="asset-heading">
+      <div class="asset-heading">
+        <div><div class="eyebrow">Chart-only watchlist</div><h2 id="asset-heading">Futures, index, commodities &amp; Bitcoin</h2></div>
+        <p>These six markets are not in the stock backtests.</p>
+      </div>
+      <div id="asset-list" class="asset-list" role="group" aria-label="Other markets"></div>
+      <div class="asset-detail">
+        <div><div id="asset-type" class="eyebrow"></div><h3 id="asset-title">Loading chart…</h3><p id="asset-symbol" class="asset-symbol"></p></div>
+        <a id="asset-full-chart" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a>
+      </div>
+      <p class="asset-note">One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>. Exchange data may be delayed or require a subscription. MNQ, NQ, and oil use continuous futures symbols, not a specific expiring contract; the S&amp;P 500 is an index, not a directly tradable asset.</p>
+      <div id="asset-chart" class="tradingview-chart asset-chart" aria-label="One-minute chart for selected market"></div>
+    </section>
+
+    <h2 class="stocks-heading">US stocks</h2>
     <div class="market-layout">
       <section class="surface symbol-panel" aria-labelledby="universe-heading">
         <div class="panel-heading"><div><div class="eyebrow"><span id="list-symbol-count">30</span> symbols</div><h2 id="universe-heading">Market list</h2></div></div>

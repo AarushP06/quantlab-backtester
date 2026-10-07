@@ -2,6 +2,7 @@ let market;
 let selectedSymbol;
 let selectedRange = "1Y";
 let selectedView = "history";
+let selectedAsset = "MNQ";
 let priceChart;
 const providerQuotes = new Map();
 const quotePending = new Set();
@@ -18,6 +19,14 @@ const TRADINGVIEW_SYMBOLS = {
   PG: "NYSE:PG", TSLA: "NASDAQ:TSLA", UNH: "NYSE:UNH",
   V: "NYSE:V", WMT: "NASDAQ:WMT", XOM: "NYSE:XOM"
 };
+const OTHER_MARKETS = [
+  {id: "MNQ", label: "Micro Nasdaq", title: "Micro E-mini Nasdaq-100 futures", type: "CME continuous futures", symbol: "CME_MINI:MNQ1!"},
+  {id: "NQ", label: "E-mini Nasdaq", title: "E-mini Nasdaq-100 futures", type: "CME continuous futures", symbol: "CME_MINI:NQ1!"},
+  {id: "SPX", label: "S&P 500 index", title: "S&P 500 index", type: "US equity index", symbol: "SP:SPX"},
+  {id: "GOLD", label: "Spot gold", title: "Gold spot / US dollar", type: "Spot metal quote", symbol: "OANDA:XAUUSD"},
+  {id: "BTC", label: "Bitcoin", title: "Bitcoin / US dollar", type: "Bitstamp spot market", symbol: "BITSTAMP:BTCUSD"},
+  {id: "OIL", label: "WTI crude", title: "WTI crude oil futures", type: "NYMEX continuous futures", symbol: "NYMEX:CL1!"}
+];
 
 const byId = id => document.getElementById(id);
 const dollars = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
@@ -109,15 +118,8 @@ function renderChart(stock) {
   });
 }
 
-function renderIntradayChart() {
-  const target = byId("intraday-chart");
+function mountTradingView(target, symbol) {
   target.replaceChildren();
-  const symbol = TRADINGVIEW_SYMBOLS[selectedSymbol];
-  if (!symbol) {
-    target.textContent = "A one-minute chart is not configured for this symbol.";
-    return;
-  }
-  byId("open-tradingview").href = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
   const container = document.createElement("div");
   container.className = "tradingview-widget-container";
   const widget = document.createElement("div");
@@ -137,6 +139,54 @@ function renderIntradayChart() {
   });
   container.append(script);
   target.append(container);
+}
+
+function renderIntradayChart() {
+  const target = byId("intraday-chart");
+  const symbol = TRADINGVIEW_SYMBOLS[selectedSymbol];
+  if (!symbol) {
+    target.textContent = "A one-minute chart is not configured for this symbol.";
+    return;
+  }
+  byId("open-tradingview").href = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
+  mountTradingView(target, symbol);
+}
+
+function renderAsset() {
+  const asset = OTHER_MARKETS.find(item => item.id === selectedAsset);
+  byId("asset-type").textContent = asset.type;
+  byId("asset-title").textContent = asset.title;
+  byId("asset-symbol").textContent = asset.symbol;
+  byId("asset-full-chart").href = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(asset.symbol)}`;
+  byId("asset-chart").setAttribute("aria-label", `One-minute chart for ${asset.title}`);
+  for (const button of document.querySelectorAll(".asset-button")) {
+    button.setAttribute("aria-pressed", String(button.dataset.asset === selectedAsset));
+  }
+  mountTradingView(byId("asset-chart"), asset.symbol);
+}
+
+function renderAssetList() {
+  const list = byId("asset-list");
+  list.replaceChildren();
+  for (const asset of OTHER_MARKETS) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "asset-button";
+    button.dataset.asset = asset.id;
+    const name = document.createElement("strong");
+    name.textContent = asset.id === "SPX" ? "S&P 500" : asset.id;
+    const label = document.createElement("span");
+    label.textContent = asset.label;
+    button.append(name, label);
+    button.addEventListener("click", () => {
+      selectedAsset = asset.id;
+      const url = new URL(window.location.href);
+      url.searchParams.set("asset", asset.id);
+      history.replaceState(null, "", url);
+      renderAsset();
+    });
+    list.append(button);
+  }
 }
 
 function setChartView(view) {
@@ -249,12 +299,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderStock();
       });
     }
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderStock);
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      renderStock();
+      renderAsset();
+    });
     window.setInterval(() => {
       refreshProviderQuote();
     }, 60000);
     renderList();
     renderStock();
+    const requestedAsset = new URLSearchParams(window.location.search).get("asset")?.toUpperCase();
+    if (OTHER_MARKETS.some(item => item.id === requestedAsset)) selectedAsset = requestedAsset;
+    renderAssetList();
+    renderAsset();
     if (new URLSearchParams(window.location.search).get("view") === "intraday") {
       setChartView("intraday");
     }

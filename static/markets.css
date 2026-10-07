@@ -1,4 +1,20 @@
 .market-hero { display: flex; justify-content: space-between; gap: 2rem; align-items: end; margin-bottom: 1.3rem; }
+.asset-panel { padding: 1.2rem; margin: 1rem 0 1.6rem; }
+.asset-heading, .asset-detail { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: .6rem 1.2rem; }
+.asset-heading h2, .asset-detail h3 { margin-bottom: 0; }
+.asset-heading p { margin: 0; font-size: .8rem; }
+.asset-list { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .5rem; margin: 1rem 0; }
+.asset-button { display: grid; gap: .2rem; min-width: 0; padding: .65rem .7rem; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.asset-button:hover, .asset-button[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-muted); }
+.asset-button strong { font-size: .9rem; }
+.asset-button span { color: var(--muted); font-size: .7rem; line-height: 1.3; }
+.asset-detail { border-top: 1px solid var(--border); padding-top: .9rem; }
+.asset-detail h3 { font-size: 1.15rem; }
+.asset-detail a { font-size: .8rem; font-weight: 700; }
+.asset-symbol { font-size: .76rem; font-variant-numeric: tabular-nums; margin: .2rem 0 0; }
+.asset-note { font-size: .77rem; margin: .75rem 0 0; }
+.asset-chart { margin-top: .75rem; height: 420px; }
+.stocks-heading { margin: 0 0 .7rem; }
 .market-hero p { max-width: 65ch; margin-bottom: 0; font-size: .91rem; }
 .snapshot-label { min-width: 172px; padding: .25rem 0 .25rem 1rem; border-left: 1px solid var(--border); color: var(--muted); line-height: 1.55; font-size: .78rem; }
 .snapshot-label strong { color: var(--text); font-size: .96rem; font-variant-numeric: tabular-nums; }
@@ -52,10 +68,14 @@
 .stock-facts strong { font-size: .9rem; font-variant-numeric: tabular-nums; }
 .footer-note a { font-weight: 700; }
 @media (max-width: 850px) {
+  .asset-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .market-layout { grid-template-columns: 1fr; }
   .symbol-list { max-height: 252px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 620px) {
+  .asset-panel { padding: 1rem; }
+  .asset-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .asset-chart { height: 400px; }
   .market-hero { display: grid; gap: 1rem; }
   .snapshot-label { width: max-content; }
   .symbol-panel, .stock-panel { padding: 1rem; }

@@ -70,8 +70,26 @@ def test_market_page_and_committed_snapshot_are_present():
     assert 'href="markets.html"' in (root / "static/index.html").read_text()
     assert 'id="symbol-search"' in page
     assert 'id="stock-chart"' in page
-    assert "The historical chart and stock rows use a saved snapshot" in page
-    assert "Minute candles and provider quotes appear separately" in page
+    assert "Stock history and backtests use a saved snapshot" in page
+    assert "Minute charts and provider quotes appear separately" in page
     assert len(snapshot["symbols"]) == 30
     assert {"AMD", "ADBE", "CRM", "NFLX", "ORCL", "BAC", "KO", "PEP", "DIS", "MCD"}.issubset(snapshot["symbols"])
     assert snapshot["as_of"] == "2026-09-25"
+
+
+def test_other_markets_are_labeled_chart_only_and_outside_stock_snapshot():
+    root = Path(__file__).resolve().parents[2]
+    page = (root / "static/markets.html").read_text()
+    script = (root / "static/markets.js").read_text()
+    snapshot = json.loads((root / "static/data/market.json").read_text())
+
+    assert 'id="asset-list"' in page
+    assert 'id="asset-chart"' in page
+    assert "These six markets are not in the stock backtests" in page
+    assert "Exchange data may be delayed" in page
+    for symbol in (
+        "CME_MINI:MNQ1!", "CME_MINI:NQ1!", "SP:SPX",
+        "OANDA:XAUUSD", "BITSTAMP:BTCUSD", "NYMEX:CL1!",
+    ):
+        assert symbol in script
+    assert not {"MNQ", "NQ", "SPX", "GOLD", "BTC", "OIL"}.intersection(snapshot["symbols"])
