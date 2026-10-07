@@ -35,13 +35,20 @@
         <div><div class="eyebrow">Chart-only watchlist</div><h2 id="asset-heading">Nasdaq futures, gold &amp; Bitcoin</h2></div>
         <p>These four markets are not in the stock backtests.</p>
       </div>
-      <div id="asset-list" class="asset-list" role="group" aria-label="Other markets"></div>
-      <div class="asset-detail">
-        <div><div id="asset-type" class="eyebrow"></div><h3 id="asset-title">Loading chart…</h3><p id="asset-symbol" class="asset-symbol"></p></div>
-        <a id="asset-full-chart" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a>
+      <div class="asset-workspace">
+        <aside class="asset-sidebar" aria-label="Chart market selector">
+          <div class="eyebrow">Markets · 4</div>
+          <div id="asset-list" class="asset-list" role="group" aria-label="Other markets"></div>
+        </aside>
+        <div class="asset-main">
+          <div class="asset-detail">
+            <div><div id="asset-type" class="eyebrow"></div><h3 id="asset-title">Loading chart…</h3><p id="asset-symbol" class="asset-symbol"></p></div>
+            <a id="asset-full-chart" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a>
+          </div>
+          <p class="asset-note">One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>. Exchange data may be delayed or require a subscription. MNQ and NQ use continuous futures symbols, not a specific expiring contract.</p>
+          <div id="asset-chart" class="tradingview-chart asset-chart" aria-label="One-minute chart for selected market"></div>
+        </div>
       </div>
-      <p class="asset-note">One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>. Exchange data may be delayed or require a subscription. MNQ and NQ use continuous futures symbols, not a specific expiring contract.</p>
-      <div id="asset-chart" class="tradingview-chart asset-chart" aria-label="One-minute chart for selected market"></div>
     </section>
 
     <h2 class="stocks-heading">US stocks</h2>

@@ -85,6 +85,9 @@ def test_other_markets_are_labeled_chart_only_and_outside_stock_snapshot():
 
     assert 'id="asset-list"' in page
     assert 'id="asset-chart"' in page
+    assert 'class="asset-workspace"' in page
+    assert 'class="asset-sidebar"' in page
+    assert page.index('id="asset-list"') < page.index('id="asset-chart"')
     assert "These four markets are not in the stock backtests" in page
     assert "Exchange data may be delayed" in page
     for symbol in (

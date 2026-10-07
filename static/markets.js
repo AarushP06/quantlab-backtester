@@ -171,6 +171,7 @@ function renderAssetList() {
     button.type = "button";
     button.className = "asset-button";
     button.dataset.asset = asset.id;
+    button.setAttribute("aria-pressed", String(asset.id === selectedAsset));
     const name = document.createElement("strong");
     name.textContent = asset.id;
     const label = document.createElement("span");
@@ -184,6 +185,10 @@ function renderAssetList() {
       renderAsset();
     });
     list.append(button);
+  }
+  const activeButton = list.querySelector('[aria-pressed="true"]');
+  if (activeButton) {
+    list.scrollLeft = activeButton.getBoundingClientRect().left - list.getBoundingClientRect().left;
   }
 }
 
