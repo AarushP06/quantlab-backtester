@@ -20,6 +20,7 @@ from quantlab.strategies import BuyAndHold, MomentumRanking, MovingAverageCrosso
 from .quotes import GoogleQuoteService, QuoteUnavailable
 
 DATASET = Path(__file__).resolve().parents[1] / "data/processed/universe.parquet"
+STATIC_SITE = Path(__file__).resolve().parents[1] / "static"
 COST_LEVELS = {"0": CostModel(0, 0, 0), "5": CostModel()}
 STRATEGIES = {
     "ma": ("Moving average 20/50", lambda: MovingAverageCrossover(20, 50)),
@@ -69,7 +70,7 @@ def create_app(
             f"Processed dataset missing: {data_path}. "
             "Provide data/processed/universe.parquet before starting the app."
         )
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=str(STATIC_SITE), static_url_path="")
     quote_service = quote_service or GoogleQuoteService(os.environ.get("FINNHUB_API_KEY"))
 
     @app.get("/api/quote/GOOGL")

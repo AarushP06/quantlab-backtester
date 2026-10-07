@@ -63,3 +63,17 @@ def test_page_validates_inputs_and_reports_missing_cache(tmp_path):
 
     with pytest.raises(FileNotFoundError, match="Processed dataset missing.*universe.parquet"):
         create_app(tmp_path / "absent" / "universe.parquet")
+
+
+def test_render_app_serves_market_explorer_and_saved_data(tmp_path):
+    path, _dates = cached_prices(tmp_path)
+    client = create_app(path).test_client()
+
+    page = client.get("/markets.html?symbol=GOOGL")
+    assert page.status_code == 200
+    assert b'id="provider-quote"' in page.data
+    assert b"/markets.html?symbol=GOOGL" in client.get("/").data
+    assert client.get("/markets.js").status_code == 200
+    snapshot = client.get("/data/market.json")
+    assert snapshot.status_code == 200
+    assert "GOOGL" in snapshot.json["symbols"]

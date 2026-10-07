@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY quantlab ./quantlab
 COPY app ./app
+COPY static ./static
 COPY data/processed/universe.parquet ./data/processed/universe.parquet
 
 EXPOSE 10000
