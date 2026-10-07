@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="markets.css">
+  <title>Market explorer · Quantlab</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
+  <script src="markets.js" defer></script>
+</head>
+<body>
+  <main>
+    <nav class="app-nav" aria-label="Main navigation">
+      <a class="brand" href="index.html">Quantlab<span class="brand-mark">●</span></a>
+      <div class="nav-links"><a href="markets.html" aria-current="page">Markets</a><a href="index.html">Backtest lab</a></div>
+    </nav>
+
+    <header class="market-hero">
+      <div>
+        <div class="eyebrow">Explore the dataset</div>
+        <h1>Market explorer</h1>
+        <p>Browse adjusted daily prices for the 20 US stocks in this backtest universe. Select a symbol to inspect its history.</p>
+      </div>
+      <div class="snapshot-label">Historical snapshot<br><strong id="snapshot-date">Loading…</strong></div>
+    </header>
+
+    <aside class="notice" role="note">These are saved historical prices, not live quotes. The 20 large caps were selected today, which biases historical comparisons upward. Past performance does not predict future returns.</aside>
+    <p id="market-status" class="status" role="status" aria-live="polite">Loading saved market data…</p>
+
+    <div class="market-layout">
+      <section class="surface symbol-panel" aria-labelledby="universe-heading">
+        <div class="panel-heading"><div><div class="eyebrow">20 symbols</div><h2 id="universe-heading">Universe</h2></div></div>
+        <label class="search-label" for="symbol-search">Find a symbol<input id="symbol-search" type="search" placeholder="Search ticker" autocomplete="off"></label>
+        <div id="symbol-list" class="symbol-list" aria-label="Stocks"></div>
+      </section>
+
+      <section class="surface stock-panel" aria-labelledby="stock-title">
+        <div class="stock-header">
+          <div><div class="eyebrow">Adjusted price history · USD</div><h2 id="stock-title">Select a stock</h2><p id="stock-dates" class="stock-dates"></p></div>
+          <div class="quote"><div id="stock-price" class="quote-price">—</div><div id="stock-change" class="quote-change">—</div></div>
+        </div>
+        <div class="range-bar" role="group" aria-label="Chart date range">
+          <button type="button" data-range="1M">1M</button><button type="button" data-range="6M">6M</button><button type="button" data-range="1Y" class="active">1Y</button><button type="button" data-range="5Y">5Y</button><button type="button" data-range="ALL">All</button>
+        </div>
+        <div class="chart-wrap stock-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close chart"></canvas></div>
+        <div class="stock-facts">
+          <div><span>First available</span><strong id="fact-first">—</strong></div>
+          <div><span>Latest available</span><strong id="fact-last">—</strong></div>
+          <div><span>1-year low</span><strong id="fact-low">—</strong></div>
+          <div><span>1-year high</span><strong id="fact-high">—</strong></div>
+        </div>
+        <p class="caption">Adjusted closes account for splits and distributions in the saved feed. The daily change compares the last two available closes; these values are not executable quotes.</p>
+      </section>
+    </div>
+    <p class="footer-note">Want to compare trading rules? <a href="index.html">Open the historical simulation and buy-and-hold comparison.</a></p>
+  </main>
+</body>
+</html>

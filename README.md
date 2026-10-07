@@ -225,10 +225,13 @@ Open `http://127.0.0.1:5000/` for the form. The app reads the committed Parquet 
 
 ### Static viewer
 
+The [market explorer](static/markets.html) adds a searchable view of the same 20 symbols, with adjusted-price charts, daily change, and one-year price range. Its numbers are a **saved historical snapshot**, dated visibly on the page; they are not live quotes. Generate [`static/data/market.json`](static/data/market.json) after changing the Parquet file with `python scripts/precompute_market.py`. The explorer links to the backtest lab, and both pages run as static files.
+
 [`scripts/precompute_results.py`](scripts/precompute_results.py) runs the fixed 20/50 crossover, fixed 6-month/top-5 momentum strategy, and all four buy-and-hold rebalance modes on the full snapshot and each of the 19 one-year test folds, at 0 and 5 bps. It also starts a fresh backtest for every fitting **(start year, horizon)** pair at 1, 3, 5, 10, and 20 calendar years. The 2005–2026 snapshot has **76** such windows; those ending in 2026 use the available partial year. It saves daily equity expressed as value per $1 invested, final value per $1, CAGR, total return, and max drawdown to [`static/data/`](static/data/). The static momentum preset is **fixed 6/5**; it is not the train-selected momentum parameter sweep reported above. Regenerate and review these committed JSON files whenever the Parquet snapshot or strategy code changes:
 
 ```bash
 python scripts/precompute_results.py
+python scripts/precompute_market.py
 python -m http.server 8000 --directory static
 ```
 

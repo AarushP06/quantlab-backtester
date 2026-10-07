@@ -1,0 +1,33 @@
+.market-hero { display:flex; justify-content:space-between; gap:2rem; align-items:end; margin-bottom:1.5rem; }
+.market-hero p { max-width:62ch; margin-bottom:0; }
+.snapshot-label { min-width:170px; padding:.7rem 1rem; border:1px solid var(--border); border-radius:12px; background:var(--surface); color:var(--muted); line-height:1.5; font-size:.82rem; }
+.snapshot-label strong { color:var(--text); font-size:1.06rem; }
+.market-layout { display:grid; grid-template-columns:minmax(260px,330px) minmax(0,1fr); gap:1.2rem; align-items:start; }
+.symbol-panel, .stock-panel { padding:1.35rem; }
+.panel-heading h2 { margin-bottom:1.1rem; }
+.search-label { margin-bottom:1rem; }
+.symbol-list { max-height:680px; overflow-y:auto; display:grid; gap:.3rem; }
+.symbol-row { width:100%; display:flex; justify-content:space-between; gap:.75rem; align-items:center; padding:.85rem .8rem; border:1px solid transparent; border-radius:10px; color:var(--text); background:transparent; font:inherit; text-align:left; cursor:pointer; }
+.symbol-row:hover, .symbol-row[aria-pressed="true"] { background:var(--surface-muted); border-color:var(--border); }
+.symbol-row .ticker { font-weight:800; font-size:.94rem; }
+.symbol-row .row-price { display:block; color:var(--muted); font-size:.8rem; margin-top:.2rem; }
+.symbol-row .row-change { font-variant-numeric:tabular-nums; font-size:.83rem; font-weight:800; white-space:nowrap; }
+.positive { color:#148260; } .negative { color:#bf4e58; }
+@media (prefers-color-scheme: dark) { .positive { color:#66d2aa; } .negative { color:#ff9ba3; } }
+.stock-header { display:flex; justify-content:space-between; gap:1rem; align-items:start; }
+.stock-header h2 { font-size:clamp(1.65rem,3vw,2.3rem); margin-bottom:.3rem; }
+.stock-dates { font-size:.85rem; }
+.quote { text-align:right; white-space:nowrap; }
+.quote-price { font-size:clamp(1.65rem,3vw,2.35rem); font-weight:800; letter-spacing:-.035em; }
+.quote-change { font-size:.9rem; font-weight:800; margin-top:.2rem; }
+.range-bar { display:flex; flex-wrap:wrap; gap:.35rem; border-bottom:1px solid var(--border); margin-top:1.1rem; padding-bottom:.75rem; }
+.range-bar button { cursor:pointer; color:var(--muted); background:transparent; border:0; border-radius:8px; padding:.55rem .8rem; font:inherit; font-weight:750; }
+.range-bar button:hover, .range-bar button.active { background:var(--surface-muted); color:var(--accent); }
+.stock-chart { height:400px; }
+.stock-facts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; border-top:1px solid var(--border); padding-top:1rem; margin-top:1.2rem; }
+.stock-facts div { display:grid; gap:.3rem; }
+.stock-facts span { color:var(--muted); font-size:.78rem; }
+.stock-facts strong { font-size:.94rem; font-variant-numeric:tabular-nums; }
+.footer-note a { color:var(--accent); font-weight:700; }
+@media(max-width:850px) { .market-layout { grid-template-columns:1fr; } .symbol-list { max-height:260px; grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:620px) { .market-hero { display:grid; gap:1rem; } .snapshot-label { width:max-content; } .symbol-panel,.stock-panel { padding:1rem; } .symbol-list { grid-template-columns:1fr; } .stock-header { display:grid; } .quote { text-align:left; } .stock-facts { grid-template-columns:repeat(2,minmax(0,1fr)); } .stock-chart { height:320px; } }

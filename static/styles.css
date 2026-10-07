@@ -83,6 +83,12 @@ tbody tr:hover { background: var(--surface-muted); }
 .tables-grid { display: grid; grid-template-columns: minmax(260px, .7fr) minmax(0, 1.3fr); gap: 1.2rem; margin-top: 1.25rem; align-items: start; }
 .tables-grid h3 { margin: 0 0 .6rem; }
 .footer-note { margin: 1.5rem 0 0; }
+.app-nav { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:2.4rem; }
+.brand { color:var(--text); font-size:1.1rem; font-weight:850; text-decoration:none; letter-spacing:-.03em; }
+.brand-mark { color:var(--accent); font-size:.55rem; vertical-align:top; padding-left:.15rem; }
+.nav-links { display:flex; gap:.35rem; }
+.nav-links a { color:var(--muted); text-decoration:none; font-size:.9rem; font-weight:700; padding:.65rem .85rem; border-radius:9px; }
+.nav-links a:hover, .nav-links a[aria-current="page"] { color:var(--text); background:var(--surface); }
 
 @media (max-width: 900px) {
   .hero { grid-template-columns: 1fr; gap: 1rem; }
@@ -92,6 +98,7 @@ tbody tr:hover { background: var(--surface-muted); }
 
 @media (max-width: 620px) {
   main { width: min(100% - 1rem, 1240px); padding-top: 1.2rem; }
+  .app-nav { margin-bottom:1.5rem; }
   .toolbar, .comparison { grid-template-columns: 1fr; }
   .section { padding: 1rem; }
   .chart-wrap, .chart-wrap.explorer { height: 300px; min-height: 300px; }
