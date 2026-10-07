@@ -3,6 +3,7 @@ let selectedSymbol;
 let selectedRange = "1Y";
 let selectedView = "history";
 let selectedAsset = "MNQ";
+let selectedMarketKind = "asset";
 let priceChart;
 const providerQuotes = new Map();
 const quotePending = new Set();
@@ -158,9 +159,24 @@ function renderAsset() {
   byId("asset-full-chart").href = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(asset.symbol)}`;
   byId("asset-chart").setAttribute("aria-label", `One-minute chart for ${asset.title}`);
   for (const button of document.querySelectorAll(".asset-button")) {
-    button.setAttribute("aria-pressed", String(button.dataset.asset === selectedAsset));
+    button.setAttribute("aria-pressed", String(selectedMarketKind === "asset" && button.dataset.asset === selectedAsset));
   }
   mountTradingView(byId("asset-chart"), asset.symbol);
+}
+
+function showMarket(kind) {
+  selectedMarketKind = kind;
+  byId("asset-main").hidden = kind !== "asset";
+  byId("stock-main").hidden = kind !== "stock";
+  if (kind === "stock") byId("asset-chart").replaceChildren();
+  else byId("intraday-chart").replaceChildren();
+  byId("stocks-toggle").classList.toggle("active", kind === "stock");
+  for (const button of document.querySelectorAll(".asset-button")) {
+    button.setAttribute("aria-pressed", String(kind === "asset" && button.dataset.asset === selectedAsset));
+  }
+  for (const row of document.querySelectorAll(".symbol-row")) {
+    row.setAttribute("aria-pressed", String(kind === "stock" && row.dataset.symbol === selectedSymbol));
+  }
 }
 
 function renderAssetList() {
@@ -171,7 +187,7 @@ function renderAssetList() {
     button.type = "button";
     button.className = "asset-button";
     button.dataset.asset = asset.id;
-    button.setAttribute("aria-pressed", String(asset.id === selectedAsset));
+    button.setAttribute("aria-pressed", String(selectedMarketKind === "asset" && asset.id === selectedAsset));
     const name = document.createElement("strong");
     name.textContent = asset.id;
     const label = document.createElement("span");
@@ -181,7 +197,9 @@ function renderAssetList() {
       selectedAsset = asset.id;
       const url = new URL(window.location.href);
       url.searchParams.set("asset", asset.id);
+      url.searchParams.delete("symbol");
       history.replaceState(null, "", url);
+      showMarket("asset");
       renderAsset();
     });
     list.append(button);
@@ -223,7 +241,8 @@ function renderList() {
     const row = document.createElement("button");
     row.type = "button";
     row.className = "symbol-row";
-    row.setAttribute("aria-pressed", String(symbol === selectedSymbol));
+    row.dataset.symbol = symbol;
+    row.setAttribute("aria-pressed", String(selectedMarketKind === "stock" && symbol === selectedSymbol));
     const label = document.createElement("span");
     const ticker = document.createElement("span");
     ticker.className = "ticker";
@@ -240,7 +259,9 @@ function renderList() {
       selectedSymbol = symbol;
       const url = new URL(window.location.href);
       url.searchParams.set("symbol", symbol);
+      url.searchParams.delete("asset");
       history.replaceState(null, "", url);
+      showMarket("stock");
       renderList();
       renderStock();
     });
@@ -287,9 +308,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     byId("snapshot-date").textContent = market.as_of;
     byId("hero-symbol-count").textContent = String(symbols.length);
     byId("list-symbol-count").textContent = String(symbols.length);
-    selectedSymbol = new URLSearchParams(window.location.search).get("symbol")?.toUpperCase();
-    if (!market.symbols[selectedSymbol]) selectedSymbol = symbols[0];
+    const params = new URLSearchParams(window.location.search);
+    const requestedSymbol = params.get("symbol")?.toUpperCase();
+    selectedSymbol = market.symbols[requestedSymbol] ? requestedSymbol : symbols[0];
+    const requestedAsset = params.get("asset")?.toUpperCase();
+    const validAsset = OTHER_MARKETS.some(item => item.id === requestedAsset);
+    if (validAsset) selectedAsset = requestedAsset;
+    selectedMarketKind = market.symbols[requestedSymbol] && !validAsset ? "stock" : "asset";
     byId("symbol-search").addEventListener("input", renderList);
+    byId("stocks-toggle").addEventListener("click", () => {
+      const toggle = byId("stocks-toggle");
+      const expanded = toggle.getAttribute("aria-expanded") !== "true";
+      toggle.setAttribute("aria-expanded", String(expanded));
+      byId("stock-picker").hidden = !expanded;
+    });
     for (const button of document.querySelectorAll("[data-view]")) {
       button.addEventListener("click", () => setChartView(button.dataset.view));
     }
@@ -303,20 +335,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      renderStock();
-      renderAsset();
+      if (selectedMarketKind === "stock") renderStock();
+      else renderAsset();
     });
     window.setInterval(() => {
-      refreshProviderQuote();
+      if (selectedMarketKind === "stock") refreshProviderQuote();
     }, 60000);
     renderList();
-    renderStock();
-    const requestedAsset = new URLSearchParams(window.location.search).get("asset")?.toUpperCase();
-    if (OTHER_MARKETS.some(item => item.id === requestedAsset)) selectedAsset = requestedAsset;
     renderAssetList();
-    renderAsset();
-    if (new URLSearchParams(window.location.search).get("view") === "intraday") {
-      setChartView("intraday");
+    if (selectedMarketKind === "stock") {
+      byId("stocks-toggle").setAttribute("aria-expanded", "true");
+      byId("stock-picker").hidden = false;
+      showMarket("stock");
+      renderStock();
+      if (params.get("view") === "intraday") setChartView("intraday");
+    } else {
+      showMarket("asset");
+      renderAsset();
     }
     status.textContent = `${symbols.length} symbols · adjusted daily closes through ${market.as_of}.`;
   } catch (error) {
