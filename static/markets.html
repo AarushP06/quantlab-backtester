@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
   <script src="markets.js" defer></script>
 </head>
-<body>
+<body class="markets-page">
   <main>
     <nav class="app-nav" aria-label="Main navigation">
       <a class="brand" href="index.html">Quantlab</a>
@@ -65,10 +65,19 @@
               <button type="button" data-view="intraday" aria-pressed="false"><span class="live-dot" aria-hidden="true"></span>Live market · 1m candles</button>
             </div>
             <p id="intraday-note" class="intraday-note" hidden>One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> update automatically when available. Exchange data may be delayed; check the chart's market status and time. These prices are separate from the adjusted backtest history. <a id="open-tradingview" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a></p>
-            <div class="range-bar" role="group" aria-label="Chart date range">
-              <button type="button" data-range="1M">1M</button><button type="button" data-range="6M">6M</button><button type="button" data-range="1Y" class="active">1Y</button><button type="button" data-range="5Y">5Y</button><button type="button" data-range="ALL">All</button>
+            <div class="range-bar" role="group" aria-label="Historical data range">
+              <span>Past data</span><button type="button" data-range="1M">1M</button><button type="button" data-range="6M">6M</button><button type="button" data-range="1Y">1Y</button><button type="button" data-range="2Y">2Y</button><button type="button" data-range="3Y">3Y</button><button type="button" data-range="4Y" class="active">4Y</button><button type="button" data-range="5Y">5Y</button><button type="button" data-range="ALL">All</button>
             </div>
-            <div class="chart-wrap stock-chart" id="history-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close chart"></canvas></div>
+            <div id="forecast-controls" class="forecast-controls" aria-label="Historical scenario chart controls">
+              <label for="forecast-years">Project how many years?<input id="forecast-years" type="number" min="1" max="20" step="1" value="5" inputmode="numeric"></label>
+              <label for="forecast-view">Show scenario<select id="forecast-view"><option value="bearish">Bearish</option><option value="moderate" selected>Moderate</option><option value="bullish">Bullish</option></select></label>
+              <label for="forecast-scale">Price scale<select id="forecast-scale"><option value="logarithmic" selected>Logarithmic</option><option value="linear">Linear</option></select></label>
+              <p id="forecast-limit" class="forecast-limit"></p>
+            </div>
+            <div class="chart-panel-heading"><h3>Saved history detail</h3><span>Uses its own price range so long projections cannot flatten it.</span></div>
+            <div class="chart-wrap history-detail-chart" id="history-detail-chart"><canvas id="history-detail-canvas" role="img" aria-label="Historical adjusted close at its own price scale"></canvas></div>
+            <div class="chart-panel-heading"><h3>Extended scenario</h3><span>Shows at least 3 years of past data before the illustrative path.</span></div>
+            <div class="chart-wrap stock-chart" id="history-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close and illustrative future price path"></canvas></div>
             <div class="tradingview-chart" id="intraday-chart" aria-label="Live one-minute candlestick chart" hidden></div>
             <div class="stock-facts">
               <div><span>First available</span><strong id="fact-first">—</strong></div>
@@ -76,6 +85,15 @@
               <div><span>1-year low</span><strong id="fact-low">—</strong></div>
               <div><span>1-year high</span><strong id="fact-high">—</strong></div>
             </div>
+            <section id="forecast-panel" class="forecast-panel" aria-labelledby="forecast-title">
+              <div class="forecast-heading"><div><div class="eyebrow">Historical scenarios</div><h3 id="forecast-title">Illustrative paths from the saved close</h3></div><span id="forecast-as-of"></span></div>
+              <p>The future line follows the monthly closes of a past window with a similar total return, rescaled to the selected bearish, moderate, or bullish endpoint. Its turns and timing are illustrations, not predictions. The chart gives history its own width and uses a logarithmic price scale by default so longer horizons remain readable.</p>
+              <div class="forecast-table-wrap"><table class="forecast-table">
+                <thead><tr><th>Horizon</th><th>Bearish</th><th>Moderate</th><th>Bullish</th></tr></thead>
+                <tbody id="forecast-body"></tbody>
+              </table></div>
+              <p id="forecast-method" class="forecast-method"></p>
+            </section>
             <p class="caption" id="history-caption">Adjusted closes account for splits and distributions in the saved feed. The daily change compares the last two available closes; these values are not executable quotes.</p>
           </section>
         </div>

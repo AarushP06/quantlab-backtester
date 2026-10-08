@@ -1,10 +1,16 @@
 let market;
 let selectedSymbol;
-let selectedRange = "1Y";
+let selectedRange = "4Y";
 let selectedView = "history";
+let selectedForecastYears = 5;
+let selectedForecastView = "moderate";
+let selectedForecastScale = "logarithmic";
 let selectedAsset = "GOLD";
 let selectedMarketKind = "asset";
 let priceChart;
+let historyDetailChart;
+const forecastPaths = new Map();
+const forecastPending = new Map();
 const providerQuotes = new Map();
 const quotePending = new Set();
 const QUOTE_API_BASE = "https://quantlab-backtester.onrender.com/api/quote/";
@@ -27,7 +33,7 @@ const OTHER_MARKETS = [
 
 const byId = id => document.getElementById(id);
 const dollars = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
-const ranges = {"1M": 1, "6M": 6, "1Y": 12, "5Y": 60};
+const ranges = {"1M": 1, "6M": 6, "1Y": 12, "2Y": 24, "3Y": 36, "4Y": 48, "5Y": 60};
 
 function money(value) { return Number.isFinite(value) ? dollars.format(value) : "—"; }
 function percent(value) { return Number.isFinite(value) ? `${value >= 0 ? "+" : ""}${(value * 100).toFixed(2)}%` : "—"; }
@@ -75,15 +81,44 @@ async function refreshProviderQuote() {
   }
 }
 
-function rangeStart(lastDate) {
-  if (selectedRange === "ALL") return "0000-01-01";
+function rangeStart(lastDate, range = selectedRange) {
+  if (range === "ALL") return "0000-01-01";
   const date = new Date(`${lastDate}T00:00:00Z`);
-  date.setUTCMonth(date.getUTCMonth() - ranges[selectedRange]);
+  date.setUTCMonth(date.getUTCMonth() - ranges[range]);
   return date.toISOString().slice(0, 10);
+}
+
+function historyDateLabel(value, range = selectedRange) {
+  const options = range === "1M"
+    ? {month: "short", day: "numeric", timeZone: "UTC"}
+    : {year: "numeric", month: "short", timeZone: "UTC"};
+  return new Date(Number(value)).toLocaleDateString("en-US", options);
 }
 
 function chartColor(variable) {
   return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+}
+
+function maxForecastYears(stock) {
+  return Math.max(...Object.keys(stock.historical_scenarios || {}).map(Number));
+}
+
+async function ensureForecastPaths(symbol, stock) {
+  if (forecastPaths.has(symbol)) return forecastPaths.get(symbol);
+  if (forecastPending.has(symbol)) return forecastPending.get(symbol);
+  const pending = (async () => {
+    const response = await fetch(stock.forecast_path);
+    if (!response.ok) throw new Error(`Could not load forecast paths (${response.status})`);
+    const paths = await response.json();
+    forecastPaths.set(symbol, paths);
+    return paths;
+  })();
+  forecastPending.set(symbol, pending);
+  try {
+    return await pending;
+  } finally {
+    forecastPending.delete(symbol);
+  }
 }
 
 function renderChart(stock) {
@@ -92,24 +127,116 @@ function renderChart(stock) {
   const first = stock.dates.findIndex(date => date >= start);
   const dates = stock.dates.slice(Math.max(first, 0));
   const values = stock.adjusted_close.slice(Math.max(first, 0));
-  if (priceChart) priceChart.destroy();
-  priceChart = new Chart(byId("stock-chart"), {
+  const detailFirstDate = Date.parse(`${dates[0]}T00:00:00Z`);
+  const lastDate = Date.parse(`${stock.last_date}T00:00:00Z`);
+  if (historyDetailChart) historyDetailChart.destroy();
+  historyDetailChart = new Chart(byId("history-detail-canvas"), {
     type: "line",
-    data: {labels: dates, datasets: [{
-      label: `${selectedSymbol} adjusted close`, data: values,
+    data: {datasets: [{
+      label: `${selectedSymbol} saved adjusted close`,
+      data: dates.map((date, index) => ({x: Date.parse(`${date}T00:00:00Z`), y: values[index]})),
       borderColor: chartColor("--accent"), backgroundColor: chartColor("--accent"),
       borderWidth: 2, pointRadius: 0, tension: 0
     }]},
     options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
-      interaction: {mode: "index", intersect: false},
+      responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        title: items => new Date(items[0].parsed.x).toLocaleDateString("en-US", {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"}),
+        label: item => money(item.parsed.y)
+      }}},
+      scales: {
+        x: {type: "linear", min: detailFirstDate, max: lastDate, ticks: {color: chartColor("--muted"), maxTicksLimit: 7,
+          callback: value => historyDateLabel(value)},
+          grid: {display: false}},
+        y: {type: selectedForecastScale, ticks: {color: chartColor("--muted"), maxTicksLimit: 5,
+          callback: value => money(Number(value))}, grid: {color: chartColor("--grid")}}
+      }
+    }
+  });
+  const scenario = stock.historical_scenarios[String(selectedForecastYears)];
+  const analog = forecastPaths.get(selectedSymbol)?.[String(selectedForecastYears)]?.[selectedForecastView];
+  const candles = analog?.bars || [];
+  const extendedRange = selectedRange === "ALL" || ranges[selectedRange] >= ranges["3Y"] ? selectedRange : "3Y";
+  const extendedStart = rangeStart(stock.last_date, extendedRange);
+  const extendedFirst = stock.dates.findIndex(date => date >= extendedStart);
+  const extendedDates = stock.dates.slice(Math.max(extendedFirst, 0));
+  const extendedValues = stock.adjusted_close.slice(Math.max(extendedFirst, 0));
+  const firstDate = Date.parse(`${extendedDates[0]}T00:00:00Z`);
+  const split = {"3Y": .54, "4Y": .56, "5Y": .58, "ALL": .58}[extendedRange];
+  const endDate = Date.parse(`${scenario.through_date}T00:00:00Z`);
+  const historyX = date => split * (date - firstDate) / (lastDate - firstDate);
+  const futureX = date => split + (1 - split) * (date - lastDate) / (endDate - lastDate);
+  const dateAtX = x => x <= split
+    ? firstDate + x / split * (lastDate - firstDate)
+    : lastDate + (x - split) / (1 - split) * (endDate - lastDate);
+  const datasets = [{
+    label: `${selectedSymbol} history`,
+    data: extendedDates.map((date, index) => ({x: historyX(Date.parse(`${date}T00:00:00Z`)), y: extendedValues[index]})),
+    borderColor: chartColor("--accent"), backgroundColor: chartColor("--accent"),
+    borderWidth: 2, pointRadius: 0, tension: 0
+  }];
+  if (candles.length) {
+    datasets.push({
+      label: `${selectedForecastView[0].toUpperCase()}${selectedForecastView.slice(1)} illustrative path`,
+      data: [{x: split, y: stock.last_close}, ...candles.map(candle => ({
+        x: futureX(Date.parse(`${candle[0]}T00:00:00Z`)), y: candle[4]
+      }))],
+      borderColor: chartColor("--forecast-up"), backgroundColor: chartColor("--forecast-up"),
+      borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 0, hitRadius: 10, tension: 0
+    });
+  }
+  const forecastRegionPlugin = {
+    id: "forecastRegion",
+    beforeDatasetsDraw(chart) {
+      const {ctx, chartArea, scales: {x}} = chart;
+      const divider = x.getPixelForValue(split);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+      ctx.clip();
+      ctx.globalAlpha = .3;
+      ctx.fillStyle = chartColor("--surface-muted");
+      ctx.fillRect(divider, chartArea.top, chartArea.right - divider, chartArea.bottom - chartArea.top);
+      ctx.globalAlpha = .75;
+      ctx.strokeStyle = chartColor("--muted");
+      ctx.setLineDash([4, 5]);
+      ctx.beginPath();
+      ctx.moveTo(divider, chartArea.top);
+      ctx.lineTo(divider, chartArea.bottom);
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+  const projectedCloses = candles.map(candle => candle[4]);
+  const minimum = Math.min(...extendedValues, ...projectedCloses) * .92;
+  const maximum = Math.max(...extendedValues, ...projectedCloses) * 1.08;
+  if (priceChart) priceChart.destroy();
+  priceChart = new Chart(byId("stock-chart"), {
+    type: "line",
+    data: {datasets},
+    plugins: [forecastRegionPlugin],
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+      interaction: {mode: "nearest", intersect: false},
       plugins: {
-        legend: {display: false},
-        tooltip: {callbacks: {label: context => money(context.parsed.y)}}
+        legend: {display: true, labels: {color: chartColor("--muted")}},
+        tooltip: {callbacks: {
+          title: items => new Date(dateAtX(items[0].parsed.x)).toLocaleDateString("en-US", {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"}),
+          label: context => `${context.dataset.label}: ${money(context.parsed.y)}`
+        }}
       },
       scales: {
-        x: {ticks: {color: chartColor("--muted"), maxTicksLimit: 7, maxRotation: 0}, grid: {display: false}},
-        y: {ticks: {color: chartColor("--muted"), callback: value => money(Number(value))}, grid: {color: chartColor("--grid")}}
+        x: {type: "linear", min: 0, max: 1, ticks: {
+          color: chartColor("--muted"), maxTicksLimit: 8, maxRotation: 0,
+          callback: value => Number(value) <= split
+            ? historyDateLabel(dateAtX(Number(value)), extendedRange)
+            : new Date(dateAtX(Number(value))).toLocaleDateString("en-US", selectedForecastYears <= 2
+              ? {year: "numeric", month: "short", timeZone: "UTC"}
+              : {year: "numeric", timeZone: "UTC"})
+        }, grid: {display: false}},
+        y: {type: selectedForecastScale, min: minimum, max: maximum,
+          ticks: {color: chartColor("--muted"), maxTicksLimit: 8, callback: value => money(Number(value))},
+          grid: {color: chartColor("--grid")}}
       }
     }
   });
@@ -190,7 +317,11 @@ function setChartView(view) {
     ? "Intraday market chart · USD" : "Adjusted price history · USD";
   byId("intraday-chart").hidden = view !== "intraday";
   byId("history-chart").hidden = view !== "history";
+  byId("history-detail-chart").hidden = view !== "history";
+  for (const heading of document.querySelectorAll(".chart-panel-heading")) heading.hidden = view !== "history";
   document.querySelector(".range-bar").hidden = view !== "history";
+  byId("forecast-controls").hidden = view !== "history";
+  byId("forecast-panel").hidden = view !== "history";
   if (view === "intraday") renderIntradayChart();
   else renderChart(market.symbols[selectedSymbol]);
 }
@@ -262,6 +393,37 @@ function renderList() {
   }
 }
 
+function renderForecast(stock) {
+  const body = byId("forecast-body");
+  body.replaceChildren();
+  const maximum = maxForecastYears(stock);
+  selectedForecastYears = Math.min(selectedForecastYears, maximum);
+  byId("forecast-years").max = String(maximum);
+  byId("forecast-years").value = String(selectedForecastYears);
+  byId("forecast-limit").textContent = `Choose 1–${maximum} whole years for ${selectedSymbol}. The chart reserves space for both history and the illustrative future path. The logarithmic price scale keeps long horizons readable.`;
+  byId("forecast-as-of").textContent = `Based on ${stock.last_date} adjusted close: ${money(stock.last_close)}`;
+  const scenario = stock.historical_scenarios[String(selectedForecastYears)];
+  const row = document.createElement("tr");
+  const horizon = document.createElement("th");
+  horizon.scope = "row";
+  horizon.textContent = `${selectedForecastYears} ${selectedForecastYears === 1 ? "year" : "years"} · to ${scenario.through_date}`;
+  row.append(horizon);
+  for (const name of ["bearish", "moderate", "bullish"]) {
+    const cell = document.createElement("td");
+    const outcome = scenario.outcomes[name];
+    const price = document.createElement("strong");
+    price.textContent = money(outcome.adjusted_price);
+    const change = document.createElement("span");
+    change.textContent = `${percent(outcome.total_return)} total`;
+    cell.append(price, change);
+    row.append(cell);
+  }
+  body.append(row);
+  const analog = forecastPaths.get(selectedSymbol)?.[String(selectedForecastYears)]?.[selectedForecastView];
+  const analogText = analog ? ` The line replays monthly closes from ${analog.analog_start} to ${analog.analog_end}, rescaled to the selected endpoint.` : "";
+  byId("forecast-method").textContent = `${scenario.window_count} overlapping historical ${selectedForecastYears}-year windows determine the endpoint.${analogText} The future path is illustrative, not a prediction or executable quote. The dollar amounts are adjusted-price equivalents, not future quoted share prices. Trading costs and taxes are not included.`;
+}
+
 function renderStock() {
   const stock = market.symbols[selectedSymbol];
   byId("provider-quote").hidden = false;
@@ -279,8 +441,20 @@ function renderStock() {
   byId("fact-last").textContent = stock.last_date;
   byId("fact-low").textContent = money(stock.year_low);
   byId("fact-high").textContent = money(stock.year_high);
+  renderForecast(stock);
   if (selectedView === "intraday") renderIntradayChart();
   else renderChart(stock);
+  if (!forecastPaths.has(selectedSymbol)) {
+    const symbol = selectedSymbol;
+    byId("forecast-limit").textContent = `Loading illustrative paths for ${symbol}…`;
+    ensureForecastPaths(symbol, stock).then(() => {
+      if (selectedSymbol !== symbol || selectedMarketKind !== "stock") return;
+      renderForecast(stock);
+      if (selectedView === "history") renderChart(stock);
+    }).catch(error => {
+      if (selectedSymbol === symbol) byId("forecast-limit").textContent = `Unable to load candle paths: ${error.message}`;
+    });
+  }
   refreshProviderQuote();
 }
 
@@ -315,6 +489,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderStock();
       });
     }
+    byId("forecast-years").addEventListener("change", () => {
+      const years = Number(byId("forecast-years").value);
+      const stock = market.symbols[selectedSymbol];
+      const maximum = maxForecastYears(stock);
+      if (!Number.isInteger(years) || years < 1 || years > maximum) {
+        byId("forecast-years").value = String(selectedForecastYears);
+        byId("forecast-limit").textContent = `Enter a whole number from 1 to ${maximum}.`;
+        return;
+      }
+      selectedForecastYears = years;
+      renderForecast(stock);
+      if (selectedView === "history") renderChart(stock);
+    });
+    byId("forecast-view").addEventListener("change", () => {
+      selectedForecastView = byId("forecast-view").value;
+      renderForecast(market.symbols[selectedSymbol]);
+      if (selectedView === "history") renderChart(market.symbols[selectedSymbol]);
+    });
+    byId("forecast-scale").addEventListener("change", () => {
+      selectedForecastScale = byId("forecast-scale").value;
+      if (selectedView === "history") renderChart(market.symbols[selectedSymbol]);
+    });
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
       if (selectedMarketKind === "stock") renderStock();
       else renderAsset();

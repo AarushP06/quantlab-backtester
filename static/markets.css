@@ -61,16 +61,43 @@
 .tradingview-chart[hidden], .stock-chart[hidden], .range-bar[hidden], .intraday-note[hidden], #history-caption[hidden] { display: none; }
 .tradingview-widget-container, .tradingview-widget-container__widget { width: 100%; height: 100%; }
 .range-bar { display: flex; flex-wrap: wrap; gap: 1.3rem; border-bottom: 1px solid var(--border); margin-top: .5rem; padding: 0; }
+.range-bar span { align-self: center; color: var(--muted); font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .range-bar button { cursor: pointer; color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: .7rem 0 .55rem; font: inherit; font-size: .8rem; font-weight: 700; }
 .range-bar button:hover, .range-bar button.active { color: var(--text); border-bottom-color: var(--accent); }
-.stock-chart { height: 400px; margin-top: 1rem; }
+.forecast-controls { display: grid; grid-template-columns: minmax(125px, 170px) minmax(170px, 230px) minmax(170px, 230px); gap: .75rem 1rem; align-items: end; margin-top: 1rem; padding: .85rem 1rem; background: var(--surface-muted); border: 1px solid var(--border); }
+.forecast-controls[hidden], .forecast-panel[hidden] { display: none; }
+.forecast-controls label { margin: 0; }
+.forecast-controls .forecast-limit { grid-column: 1 / -1; margin: 0 0 .2rem; font-size: .72rem; line-height: 1.4; }
+.chart-panel-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .3rem 1rem; align-items: baseline; margin-top: 1.2rem; }
+.chart-panel-heading h3 { margin: 0; font-size: .87rem; }
+.chart-panel-heading span { color: var(--muted); font-size: .72rem; }
+.history-detail-chart { height: 270px; margin-top: .4rem; }
+.history-detail-chart[hidden], .chart-panel-heading[hidden] { display: none; }
+.stock-chart { height: 600px; margin-top: 1rem; }
 .stock-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem; }
 .stock-facts div { display: grid; gap: .3rem; }
 .stock-facts span { color: var(--muted); font-size: .74rem; }
 .stock-facts strong { font-size: .9rem; font-variant-numeric: tabular-nums; }
+.forecast-panel { margin-top: 1.5rem; padding: 1.2rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-muted); }
+.forecast-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem 1rem; align-items: end; }
+.forecast-heading h3 { margin: 0; font-size: 1.15rem; }
+.forecast-heading span, .forecast-panel p { color: var(--muted); font-size: .78rem; }
+.forecast-panel p { max-width: 75ch; line-height: 1.55; }
+.forecast-table-wrap { overflow-x: auto; }
+.forecast-table { width: 100%; min-width: 550px; border-collapse: collapse; text-align: left; }
+.forecast-table th, .forecast-table td { padding: .75rem .6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.forecast-table thead th { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+.forecast-table tbody th { white-space: nowrap; font-size: .83rem; }
+.forecast-table td { font-variant-numeric: tabular-nums; }
+.forecast-table td strong, .forecast-table td span { display: block; }
+.forecast-table td strong { font-size: .95rem; }
+.forecast-table td span { color: var(--muted); font-size: .74rem; margin-top: .2rem; }
+.forecast-panel .forecast-method { margin-bottom: 0; font-size: .72rem; }
 .footer-note a { font-weight: 700; }
 @media (max-width: 850px) {
   .symbol-list { max-height: 350px; }
+  .forecast-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .forecast-limit { grid-column: 1 / -1; }
 }
 @media (max-width: 720px) {
   .asset-workspace { grid-template-columns: minmax(0, 1fr); }
@@ -88,6 +115,10 @@
   .quote { text-align: left; }
   .provider-quote { grid-template-columns: 1fr; }
   .stock-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .stock-chart { height: 320px; }
+  .stock-chart { height: 440px; }
+  .history-detail-chart { height: 230px; }
+  .forecast-controls { grid-template-columns: minmax(0, 1fr); }
+  .forecast-controls .forecast-limit { grid-column: 1; }
   .tradingview-chart { height: 430px; }
 }
+.markets-page main { width: min(100% - 2rem, 1600px); }

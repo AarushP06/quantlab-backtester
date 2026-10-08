@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import json
 import math
+import sys
 from pathlib import Path
 
 import pandas as pd
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from quantlab.forecast import historical_analog_paths, historical_scenarios
 
 DATASET = Path("data/processed/universe.parquet")
 EXTRAS = Path("data/processed/market_extras.parquet")
@@ -26,6 +32,10 @@ def build_market_data(prices: pd.DataFrame, output: Path = OUTPUT,
     if "close" not in prices.columns.get_level_values(0):
         raise ValueError("Price frame needs close columns")
 
+    output = Path(output)
+    paths_dir = output.parent / "forecast_paths"
+    paths_dir.mkdir(parents=True, exist_ok=True)
+    fields = set(prices.columns.get_level_values(0))
     symbols = {}
     for symbol in sorted(prices["close"].columns):
         closes = prices["close"][symbol].dropna()
@@ -38,6 +48,17 @@ def build_market_data(prices: pd.DataFrame, output: Path = OUTPUT,
         prior = float(closes.iloc[-2]) if len(closes) > 1 else None
         last = float(closes.iloc[-1])
         trailing = closes.loc[closes.index >= closes.index[-1] - pd.DateOffset(years=1)]
+        scenarios = historical_scenarios(closes)
+        bars = pd.DataFrame({
+            field: prices[field][symbol].loc[closes.index] if field in fields else closes
+            for field in ("open", "high", "low", "close")
+        })
+        paths = historical_analog_paths(bars, scenarios)
+        if set(paths) != set(scenarios):
+            raise ValueError(f"Not enough valid OHLC history for {symbol} forecast paths")
+        with (paths_dir / f"{symbol}.json").open("w", encoding="utf-8") as stream:
+            json.dump(paths, stream, allow_nan=False, separators=(",", ":"))
+            stream.write("\n")
         symbols[symbol] = {
             "first_date": dates[0],
             "last_date": dates[-1],
@@ -47,6 +68,8 @@ def build_market_data(prices: pd.DataFrame, output: Path = OUTPUT,
             "year_high": _number(trailing.max()),
             "dates": dates,
             "adjusted_close": values,
+            "historical_scenarios": scenarios,
+            "forecast_path": f"data/forecast_paths/{symbol}.json",
         }
 
     payload = {
@@ -56,7 +79,6 @@ def build_market_data(prices: pd.DataFrame, output: Path = OUTPUT,
         "price_type": "Adjusted daily close",
         "symbols": symbols,
     }
-    output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="utf-8") as stream:
         json.dump(payload, stream, allow_nan=False, separators=(",", ":"))
