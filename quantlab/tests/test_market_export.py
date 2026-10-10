@@ -69,7 +69,8 @@ def test_market_page_and_committed_snapshot_are_present():
 
     assert 'href="markets.html"' in (root / "static/index.html").read_text()
     assert 'id="symbol-search"' in page
-    assert 'id="stock-chart"' in page
+    assert 'id="history-detail-canvas"' in page
+    assert 'id="stock-chart"' in (root / "static/forecast.html").read_text()
     assert "Stock history and backtests use a saved snapshot" in page
     assert "Minute charts and provider quotes appear separately" in page
     assert len(snapshot["symbols"]) == 30

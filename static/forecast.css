@@ -1,0 +1,26 @@
+.forecast-page main { width: min(100% - 2rem, 1600px); }
+.forecast-hero { display: flex; justify-content: space-between; gap: 1rem; align-items: end; margin-bottom: .7rem; }
+.forecast-hero h1 { margin-bottom: .2rem; }
+.forecast-hero p { margin: 0; }
+.forecast-hero a { white-space: nowrap; font-size: .82rem; font-weight: 700; }
+.forecast-workspace { padding: 1.1rem 1.25rem 1.25rem; }
+.forecast-topline { display: flex; justify-content: space-between; align-items: end; gap: 1rem; }
+.forecast-topline h2 { margin: .1rem 0; }
+.forecast-topline p { margin: 0; color: var(--muted); font-size: .78rem; }
+.forecast-headline { display: grid; gap: .1rem; text-align: right; font-variant-numeric: tabular-nums; }
+.forecast-headline span { color: var(--muted); font-size: .77rem; }
+.forecast-headline strong { font-size: clamp(1.7rem, 3vw, 2.5rem); letter-spacing: -.04em; }
+.forecast-controls { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: .9rem; }
+.forecast-page .range-bar { margin-top: .6rem; }
+.forecast-page .stock-chart { height: min(56vh, 620px); min-height: 390px; margin-top: .7rem; }
+.forecast-page .forecast-panel { margin: 1rem 0 2rem; }
+@media (max-width: 720px) {
+  .forecast-hero, .forecast-topline { align-items: start; }
+  .forecast-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .forecast-page .stock-chart { height: 430px; min-height: 0; }
+}
+@media (max-width: 520px) {
+  .forecast-hero, .forecast-topline { display: grid; }
+  .forecast-headline { text-align: left; }
+  .forecast-controls { grid-template-columns: 1fr; }
+}

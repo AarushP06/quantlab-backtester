@@ -110,18 +110,18 @@ def test_rejects_unsorted_dates_and_invalid_horizon():
 
 def test_market_page_and_snapshot_expose_scenarios_for_all_stocks():
     root = Path(__file__).resolve().parents[2]
-    page = (root / "static/markets.html").read_text()
-    chart_script = (root / "static/markets.js").read_text()
+    markets_page = (root / "static/markets.html").read_text()
+    page = (root / "static/forecast.html").read_text()
+    chart_script = (root / "static/forecast.js").read_text()
     snapshot = json.loads((root / "static/data/market.json").read_text())
     assert 'id="forecast-body"' in page
-    assert 'id="history-detail-canvas"' in page
-    assert 'data-detail-range="4Y" class="active"' in page
+    assert 'id="history-detail-canvas"' in markets_page
+    assert 'data-detail-range="4Y" class="active"' in markets_page
     assert 'data-extended-range="4Y" class="active"' in page
-    assert "Choose how much past data" in page
     assert "The future line follows" in page
     assert "ghost candles" not in page
     for years in range(1, 5):
-        assert f'data-detail-range="{years}Y"' in page
+        assert f'data-detail-range="{years}Y"' in markets_page
         assert f'data-extended-range="{years}Y"' in page
         assert f'"{years}Y": {12 * years}' in chart_script
     assert "not predictions" in page

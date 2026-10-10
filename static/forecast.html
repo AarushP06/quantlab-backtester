@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="markets.css">
+  <link rel="stylesheet" href="forecast.css">
+  <title>Forecast · Quantlab</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
+  <script src="forecast.js" defer></script>
+</head>
+<body class="forecast-page">
+  <main>
+    <nav class="app-nav" aria-label="Main navigation">
+      <a class="brand" href="index.html">Quantlab</a>
+      <div class="nav-links"><a href="markets.html">Markets</a><a href="forecast.html" aria-current="page">Forecast</a><a href="index.html">Backtest lab</a></div>
+    </nav>
+    <header class="forecast-hero">
+      <div><div class="eyebrow">Historical scenarios</div><h1>Stock forecast explorer</h1><p>Explore bearish, moderate, and bullish paths from a saved market close.</p></div>
+      <a id="back-to-market" href="markets.html">View stock history →</a>
+    </header>
+    <p id="forecast-status" class="status" role="status" aria-live="polite">Loading saved market data…</p>
+    <section class="surface forecast-workspace" aria-labelledby="forecast-title">
+      <div class="forecast-topline"><div><div class="eyebrow">Illustrative scenario</div><h2 id="forecast-title">Loading…</h2><p id="forecast-as-of"></p></div><div class="forecast-headline"><span id="selected-scenario-label">Moderate · 5 years</span><strong id="selected-scenario-price">—</strong><span id="selected-scenario-return">—</span></div></div>
+      <div class="forecast-controls" aria-label="Forecast chart controls">
+        <label for="forecast-symbol">Stock<select id="forecast-symbol"></select></label>
+        <label for="forecast-years">Project how many years?<input id="forecast-years" type="number" min="1" max="20" step="1" value="5" inputmode="numeric"></label>
+        <label for="forecast-view">Show scenario<select id="forecast-view"><option value="bearish">Bearish</option><option value="moderate" selected>Moderate</option><option value="bullish">Bullish</option></select></label>
+        <label for="forecast-scale">Price scale<select id="forecast-scale"><option value="logarithmic" selected>Logarithmic</option><option value="linear">Linear</option></select></label>
+        <p id="forecast-limit" class="forecast-limit"></p>
+      </div>
+      <div class="range-bar" role="group" aria-label="Chart history range"><span>Past data</span><button type="button" data-extended-range="1Y">1Y</button><button type="button" data-extended-range="2Y">2Y</button><button type="button" data-extended-range="3Y">3Y</button><button type="button" data-extended-range="4Y" class="active">4Y</button><button type="button" data-extended-range="5Y">5Y</button><button type="button" data-extended-range="10Y">10Y</button><button type="button" data-extended-range="ALL">All</button></div>
+      <div class="chart-wrap stock-chart" id="history-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close and illustrative future price path"></canvas></div>
+      <p id="extended-history-caption" class="caption"></p>
+    </section>
+    <section class="surface forecast-panel" aria-labelledby="scenario-title">
+      <div class="forecast-heading"><div><div class="eyebrow">How the path is drawn</div><h2 id="scenario-title">Historical scenario details</h2></div></div>
+      <p>The future line follows the monthly closes of a past window with a similar total return, rescaled to the selected bearish, moderate, or bullish endpoint. Its turns and timing are illustrations, not predictions. The chart gives history its own width and uses a logarithmic price scale by default so longer horizons remain readable.</p>
+      <div class="forecast-table-wrap"><table class="forecast-table"><thead><tr><th>Horizon</th><th>Bearish</th><th>Moderate</th><th>Bullish</th></tr></thead><tbody id="forecast-body"></tbody></table></div>
+      <div class="scenario-check"><strong>Past holdout check</strong><p id="forecast-evaluation">Loading evaluation…</p></div>
+      <p id="forecast-method" class="forecast-method"></p>
+    </section>
+  </main>
+</body>
+</html>

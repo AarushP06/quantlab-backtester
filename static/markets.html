@@ -15,7 +15,7 @@
   <main>
     <nav class="app-nav" aria-label="Main navigation">
       <a class="brand" href="index.html">Quantlab</a>
-      <div class="nav-links"><a href="markets.html" aria-current="page">Markets</a><a href="index.html">Backtest lab</a></div>
+      <div class="nav-links"><a href="markets.html" aria-current="page">Markets</a><a href="forecast.html">Forecast</a><a href="index.html">Backtest lab</a></div>
     </nav>
 
     <header class="market-hero">
@@ -33,14 +33,17 @@
     <section class="surface asset-panel" aria-labelledby="asset-heading">
       <div class="asset-heading">
         <div><div class="eyebrow">Market explorer</div><h2 id="asset-heading">Choose a market</h2></div>
-        <p>One list for stocks, gold, and Bitcoin.</p>
+        <p>Pick a market to explore its chart.</p>
       </div>
       <div class="asset-workspace">
-        <aside class="asset-sidebar" aria-label="Market selector">
-          <div class="sidebar-heading"><span class="eyebrow">All markets</span><span class="category-count" id="list-symbol-count">32</span></div>
-          <label class="search-label" for="symbol-search">Find a market<input id="symbol-search" type="search" placeholder="Search ticker or name" autocomplete="off"></label>
-          <div id="symbol-list" class="symbol-list" aria-label="Markets"></div>
-        </aside>
+        <div class="asset-sidebar">
+          <button id="market-picker-toggle" class="market-picker-toggle" type="button" aria-expanded="false" aria-controls="market-picker-panel"><span><small>Selected market</small><strong id="market-picker-current">Loading…</strong></span><span aria-hidden="true">▾</span></button>
+          <div id="market-picker-panel" class="market-picker-panel" hidden>
+            <div class="sidebar-heading"><span class="eyebrow">All markets</span><span class="category-count" id="list-symbol-count">32</span></div>
+            <label class="search-label" for="symbol-search">Find a market<input id="symbol-search" type="search" placeholder="Search ticker or name" autocomplete="off"></label>
+            <div id="symbol-list" class="symbol-list" aria-label="Markets"></div>
+          </div>
+        </div>
         <div class="browser-main">
           <div id="asset-main" class="asset-main">
             <div class="asset-detail">
@@ -52,7 +55,7 @@
           </div>
           <section id="stock-main" class="stock-panel" hidden aria-labelledby="stock-title">
             <div class="stock-header">
-              <div><div class="eyebrow" id="chart-kicker">Adjusted price history · USD</div><h2 id="stock-title">Select a stock</h2><p id="stock-dates" class="stock-dates"></p></div>
+              <div><div class="eyebrow" id="chart-kicker">Adjusted price history · USD</div><h2 id="stock-title">Select a stock</h2><p id="stock-dates" class="stock-dates"></p><a id="open-forecast" class="forecast-link" href="forecast.html">Explore forecast →</a></div>
               <div class="quote"><div class="quote-label">Saved adjusted close</div><div id="stock-price" class="quote-price">—</div><div id="stock-change" class="quote-change">—</div></div>
             </div>
             <div id="provider-quote" class="provider-quote" aria-live="polite" hidden>
@@ -70,17 +73,6 @@
               <span>Close-up history</span><button type="button" data-detail-range="1M">1M</button><button type="button" data-detail-range="6M">6M</button><button type="button" data-detail-range="1Y">1Y</button><button type="button" data-detail-range="2Y">2Y</button><button type="button" data-detail-range="3Y">3Y</button><button type="button" data-detail-range="4Y" class="active">4Y</button><button type="button" data-detail-range="5Y">5Y</button><button type="button" data-detail-range="ALL">All</button>
             </div>
             <div class="chart-wrap history-detail-chart" id="history-detail-chart"><canvas id="history-detail-canvas" role="img" aria-label="Historical adjusted close at its own price scale"></canvas></div>
-            <div id="forecast-controls" class="forecast-controls" aria-label="Historical scenario chart controls">
-              <label for="forecast-years">Project how many years?<input id="forecast-years" type="number" min="1" max="20" step="1" value="5" inputmode="numeric"></label>
-              <label for="forecast-view">Show scenario<select id="forecast-view"><option value="bearish">Bearish</option><option value="moderate" selected>Moderate</option><option value="bullish">Bullish</option></select></label>
-              <label for="forecast-scale">Price scale<select id="forecast-scale"><option value="logarithmic" selected>Logarithmic</option><option value="linear">Linear</option></select></label>
-              <p id="forecast-limit" class="forecast-limit"></p>
-            </div>
-            <div class="chart-panel-heading"><h3>Extended scenario</h3><span id="extended-history-caption">Choose how much past data leads into the illustrative path.</span></div>
-            <div class="range-bar" role="group" aria-label="Extended chart history range">
-              <span>Chart history</span><button type="button" data-extended-range="1Y">1Y</button><button type="button" data-extended-range="2Y">2Y</button><button type="button" data-extended-range="3Y">3Y</button><button type="button" data-extended-range="4Y" class="active">4Y</button><button type="button" data-extended-range="5Y">5Y</button><button type="button" data-extended-range="10Y">10Y</button><button type="button" data-extended-range="ALL">All</button>
-            </div>
-            <div class="chart-wrap stock-chart" id="history-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close and illustrative future price path"></canvas></div>
             <div class="tradingview-chart" id="intraday-chart" aria-label="Live one-minute candlestick chart" hidden></div>
             <div class="stock-facts">
               <div><span>First available</span><strong id="fact-first">—</strong></div>
@@ -88,16 +80,6 @@
               <div><span>1-year low</span><strong id="fact-low">—</strong></div>
               <div><span>1-year high</span><strong id="fact-high">—</strong></div>
             </div>
-            <section id="forecast-panel" class="forecast-panel" aria-labelledby="forecast-title">
-              <div class="forecast-heading"><div><div class="eyebrow">Historical scenarios</div><h3 id="forecast-title">Illustrative paths from the saved close</h3></div><span id="forecast-as-of"></span></div>
-              <p>The future line follows the monthly closes of a past window with a similar total return, rescaled to the selected bearish, moderate, or bullish endpoint. Its turns and timing are illustrations, not predictions. The chart gives history its own width and uses a logarithmic price scale by default so longer horizons remain readable.</p>
-              <div class="forecast-table-wrap"><table class="forecast-table">
-                <thead><tr><th>Horizon</th><th>Bearish</th><th>Moderate</th><th>Bullish</th></tr></thead>
-                <tbody id="forecast-body"></tbody>
-              </table></div>
-              <div class="scenario-check"><strong>Past holdout check</strong><p id="forecast-evaluation">Loading evaluation…</p></div>
-              <p id="forecast-method" class="forecast-method"></p>
-            </section>
             <p class="caption" id="history-caption">Adjusted closes account for splits and distributions in the saved feed. The daily change compares the last two available closes; these values are not executable quotes.</p>
           </section>
         </div>
