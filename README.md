@@ -6,7 +6,7 @@ Quantlab lets you explore historical stock strategies beside a buy-and-hold base
 
 ## How the backtest works
 
-The committed dataset contains adjusted daily prices for **20 selected US large-cap stocks**, from January 2005 through September 2026. Prices come from yfinance. Stocks that listed later have no price before their first trading day.
+The committed dataset contains adjusted daily prices for **20 selected US large-cap stocks**, from January 2005 through the snapshot date shown in the app. Prices come from yfinance. Stocks that listed later have no price before their first trading day.
 
 - A strategy sees data only through the current daily bar. Its decision executes at the **next bar's open**.
 - Results always include a buy-and-hold comparison at **0 and 5 basis points** of trading costs. The 5 bps model includes commission, spread, and slippage.
@@ -17,9 +17,7 @@ The lab's controls select [precomputed results](static/data/). They do not rerun
 
 ## What the results show
 
-The fixed 20/50 moving-average crossover's compounded walk-forward test CAGR was **16.15% vs 22.52%** for default buy-and-hold at 0 bps, and **15.08% vs 22.47%** at 5 bps. It beat the baseline in **4 of 19** test years at either cost level. In 2008 it lost less than buy-and-hold; in 2022 it lost more and had a deeper drawdown. Those years should be read separately.
-
-The momentum parameter sweep chooses settings using each training period only. Its average train-to-test Sharpe gap was **0.270 at 0 bps** and **0.274 at 5 bps**; it beat the baseline's test Sharpe in **3 of 19** folds at 5 bps. The fixed momentum preset shown in the lab is a different run from this train-selected sweep. Use `python scripts/param_sweep.py` for the complete sweep table.
+Run `python scripts/report_walkforward.py` for the latest crossover versus buy-and-hold results at both 0 and 5 bps. The momentum parameter sweep chooses settings using each training period only; run `python scripts/param_sweep.py` for its latest train-to-test comparison. The fixed momentum preset shown in the lab is a different run from this train-selected sweep.
 
 These results come from one historical US equity sample. The 20 stocks were selected from companies known today, which biases the past toward survivors. Trading costs are simplified, data flags remain for review, and live orders can fill differently. A backtest is evidence about its assumptions, not a forecast.
 
@@ -45,10 +43,12 @@ python scripts/report_walkforward.py
 python scripts/param_sweep.py
 ```
 
-To deliberately refresh the daily dataset, run `python scripts/build_dataset.py --start 2005-01-01 --end YYYY-MM-DD`. Review the validation issues it prints; flagged rows are not silently changed. Then run `python scripts/precompute_results.py` and `python scripts/precompute_market.py` to update the static exports.
+To refresh all stock prices and rebuild both the market explorer and backtest exports together, run `python scripts/refresh_snapshot.py` from the repository root. It requests prices through yesterday's completed session by default, validates every stock, stages all outputs, and publishes them only after the builds succeed. Previously reviewed large-move flags are recognized from the committed snapshot. New flags stop publication; review them before rerunning with `--allow-flags`. You can also set `--end YYYY-MM-DD` explicitly.
 
 The market explorer includes **10 additional stocks** that are not part of the backtest universe. Refresh their history with `python scripts/build_market_extras.py` before `python scripts/precompute_market.py`. Its latest Finnhub quote is separate from the saved adjusted history; the TradingView one-minute chart may use delayed exchange data. Gold and Bitcoin are chart-only entries in the same market list. They do not change the stock backtests.
 
-For each stock, Markets also shows **customizable 1- to 20-year historical scenarios**, limited by how much history that stock has. Choose a whole-year horizon and a bearish, moderate, or bullish outcome. Each endpoint uses the 10th, 50th, or 90th percentile of past same-horizon returns. The future line replays the monthly closes of an actual past window whose total return was close to that outcome, rescaled to meet the endpoint. A history detail chart keeps its own price range so long projections cannot flatten the past. The extended chart reserves separate width for history and the illustrative future path, shows at least three years of past data even with a shorter close-up selected, and defaults to a logarithmic price scale. Markets opens with a four-year historical range. Its dollar figures are adjusted-price equivalents, not future quoted share prices. These analog paths are not predictions or executable quotes; they omit trading costs and taxes. Gold and Bitcoin have no scenarios because their saved historical series are not in the dataset.
+For each stock, Markets also shows **customizable 1- to 20-year historical scenarios**, limited by how much history that stock has. Choose a whole-year horizon and a bearish, moderate, or bullish outcome. Each endpoint uses the 10th, 50th, or 90th percentile of past same-horizon returns. The future line replays the monthly closes of an actual past window whose total return was close to that outcome, rescaled to meet the endpoint. The close-up and extended charts now have separate history-range controls, both opening at four years. The extended chart reserves width for history and the illustrative future path and defaults to a logarithmic price scale. Its dollar figures are adjusted-price equivalents, not future quoted share prices. These analog paths are not predictions or executable quotes; they omit trading costs and taxes. Gold and Bitcoin have no scenarios because their saved historical series are not in the dataset.
+
+The market explorer also reports a historical holdout check for horizons with at least five completed yearly starting points. At each point it calculates scenario returns from earlier prices only, then compares the later return with the selected scenario and an unchanged-price baseline. It shows median return error in percentage points and how often the actual return fell between the bearish and bullish estimates. Multi-year tests overlap, and this is an evaluation of return estimates, not trading performance.
 
 The [Dockerfile](Dockerfile) and [Render configuration](render.yaml) serve the Flask app from committed data. [vercel.json](vercel.json) serves the static dashboard.

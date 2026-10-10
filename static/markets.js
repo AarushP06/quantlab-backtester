@@ -1,6 +1,7 @@
 let market;
 let selectedSymbol;
-let selectedRange = "4Y";
+let selectedDetailRange = "4Y";
+let selectedExtendedRange = "4Y";
 let selectedView = "history";
 let selectedForecastYears = 5;
 let selectedForecastView = "moderate";
@@ -33,7 +34,7 @@ const OTHER_MARKETS = [
 
 const byId = id => document.getElementById(id);
 const dollars = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
-const ranges = {"1M": 1, "6M": 6, "1Y": 12, "2Y": 24, "3Y": 36, "4Y": 48, "5Y": 60};
+const ranges = {"1M": 1, "6M": 6, "1Y": 12, "2Y": 24, "3Y": 36, "4Y": 48, "5Y": 60, "10Y": 120};
 
 function money(value) { return Number.isFinite(value) ? dollars.format(value) : "—"; }
 function percent(value) { return Number.isFinite(value) ? `${value >= 0 ? "+" : ""}${(value * 100).toFixed(2)}%` : "—"; }
@@ -81,14 +82,14 @@ async function refreshProviderQuote() {
   }
 }
 
-function rangeStart(lastDate, range = selectedRange) {
+function rangeStart(lastDate, range) {
   if (range === "ALL") return "0000-01-01";
   const date = new Date(`${lastDate}T00:00:00Z`);
   date.setUTCMonth(date.getUTCMonth() - ranges[range]);
   return date.toISOString().slice(0, 10);
 }
 
-function historyDateLabel(value, range = selectedRange) {
+function historyDateLabel(value, range) {
   const options = range === "1M"
     ? {month: "short", day: "numeric", timeZone: "UTC"}
     : {year: "numeric", month: "short", timeZone: "UTC"};
@@ -123,7 +124,9 @@ async function ensureForecastPaths(symbol, stock) {
 
 function renderChart(stock) {
   if (!window.Chart) throw new Error("Chart.js did not load from the CDN.");
-  const start = rangeStart(stock.last_date);
+  byId("detail-history-caption").textContent = `Close-up through ${stock.last_date} · own price scale`;
+  byId("extended-history-caption").textContent = `Saved through ${stock.last_date} · future path is illustrative`;
+  const start = rangeStart(stock.last_date, selectedDetailRange);
   const first = stock.dates.findIndex(date => date >= start);
   const dates = stock.dates.slice(Math.max(first, 0));
   const values = stock.adjusted_close.slice(Math.max(first, 0));
@@ -146,7 +149,7 @@ function renderChart(stock) {
       }}},
       scales: {
         x: {type: "linear", min: detailFirstDate, max: lastDate, ticks: {color: chartColor("--muted"), maxTicksLimit: 7,
-          callback: value => historyDateLabel(value)},
+          callback: value => historyDateLabel(value, selectedDetailRange)},
           grid: {display: false}},
         y: {type: selectedForecastScale, ticks: {color: chartColor("--muted"), maxTicksLimit: 5,
           callback: value => money(Number(value))}, grid: {color: chartColor("--grid")}}
@@ -156,13 +159,12 @@ function renderChart(stock) {
   const scenario = stock.historical_scenarios[String(selectedForecastYears)];
   const analog = forecastPaths.get(selectedSymbol)?.[String(selectedForecastYears)]?.[selectedForecastView];
   const candles = analog?.bars || [];
-  const extendedRange = selectedRange === "ALL" || ranges[selectedRange] >= ranges["3Y"] ? selectedRange : "3Y";
-  const extendedStart = rangeStart(stock.last_date, extendedRange);
+  const extendedStart = rangeStart(stock.last_date, selectedExtendedRange);
   const extendedFirst = stock.dates.findIndex(date => date >= extendedStart);
   const extendedDates = stock.dates.slice(Math.max(extendedFirst, 0));
   const extendedValues = stock.adjusted_close.slice(Math.max(extendedFirst, 0));
   const firstDate = Date.parse(`${extendedDates[0]}T00:00:00Z`);
-  const split = {"3Y": .54, "4Y": .56, "5Y": .58, "ALL": .58}[extendedRange];
+  const split = {"1Y": .48, "2Y": .52, "3Y": .54, "4Y": .56, "5Y": .58, "10Y": .58, "ALL": .58}[selectedExtendedRange];
   const endDate = Date.parse(`${scenario.through_date}T00:00:00Z`);
   const historyX = date => split * (date - firstDate) / (lastDate - firstDate);
   const futureX = date => split + (1 - split) * (date - lastDate) / (endDate - lastDate);
@@ -229,7 +231,7 @@ function renderChart(stock) {
         x: {type: "linear", min: 0, max: 1, ticks: {
           color: chartColor("--muted"), maxTicksLimit: 8, maxRotation: 0,
           callback: value => Number(value) <= split
-            ? historyDateLabel(dateAtX(Number(value)), extendedRange)
+            ? historyDateLabel(dateAtX(Number(value)), selectedExtendedRange)
             : new Date(dateAtX(Number(value))).toLocaleDateString("en-US", selectedForecastYears <= 2
               ? {year: "numeric", month: "short", timeZone: "UTC"}
               : {year: "numeric", timeZone: "UTC"})
@@ -319,7 +321,7 @@ function setChartView(view) {
   byId("history-chart").hidden = view !== "history";
   byId("history-detail-chart").hidden = view !== "history";
   for (const heading of document.querySelectorAll(".chart-panel-heading")) heading.hidden = view !== "history";
-  document.querySelector(".range-bar").hidden = view !== "history";
+  for (const bar of document.querySelectorAll(".range-bar")) bar.hidden = view !== "history";
   byId("forecast-controls").hidden = view !== "history";
   byId("forecast-panel").hidden = view !== "history";
   if (view === "intraday") renderIntradayChart();
@@ -419,6 +421,10 @@ function renderForecast(stock) {
     row.append(cell);
   }
   body.append(row);
+  const evaluation = stock.scenario_evaluation?.[String(selectedForecastYears)];
+  byId("forecast-evaluation").textContent = evaluation
+    ? `${evaluation.sample_count} yearly starting points (${evaluation.first_origin} to ${evaluation.last_origin}): median return error was ${evaluation.median_error_pp[selectedForecastView].toFixed(2)} percentage points for the ${selectedForecastView} scenario versus ${evaluation.flat_baseline_error_pp.toFixed(2)} for an unchanged-price baseline. The actual return fell between bearish and bullish in ${(evaluation.range_coverage * 100).toFixed(1)}% of checks. Multi-year checks overlap; this is not trading performance.`
+    : `Not enough completed historical periods to check the ${selectedForecastYears}-year scenario against later prices.`;
   const analog = forecastPaths.get(selectedSymbol)?.[String(selectedForecastYears)]?.[selectedForecastView];
   const analogText = analog ? ` The line replays monthly closes from ${analog.analog_start} to ${analog.analog_end}, rescaled to the selected endpoint.` : "";
   byId("forecast-method").textContent = `${scenario.window_count} overlapping historical ${selectedForecastYears}-year windows determine the endpoint.${analogText} The future path is illustrative, not a prediction or executable quote. The dollar amounts are adjusted-price equivalents, not future quoted share prices. Trading costs and taxes are not included.`;
@@ -480,13 +486,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     for (const button of document.querySelectorAll("[data-view]")) {
       button.addEventListener("click", () => setChartView(button.dataset.view));
     }
-    for (const button of document.querySelectorAll("[data-range]")) {
+    for (const button of document.querySelectorAll("[data-detail-range]")) {
       button.addEventListener("click", () => {
-        selectedRange = button.dataset.range;
-        for (const item of document.querySelectorAll("[data-range]")) {
+        selectedDetailRange = button.dataset.detailRange;
+        for (const item of document.querySelectorAll("[data-detail-range]")) {
           item.classList.toggle("active", item === button);
         }
-        renderStock();
+        renderChart(market.symbols[selectedSymbol]);
+      });
+    }
+    for (const button of document.querySelectorAll("[data-extended-range]")) {
+      button.addEventListener("click", () => {
+        selectedExtendedRange = button.dataset.extendedRange;
+        for (const item of document.querySelectorAll("[data-extended-range]")) {
+          item.classList.toggle("active", item === button);
+        }
+        renderChart(market.symbols[selectedSymbol]);
       });
     }
     byId("forecast-years").addEventListener("change", () => {

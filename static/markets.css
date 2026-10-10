@@ -93,6 +93,9 @@
 .forecast-table td strong { font-size: .95rem; }
 .forecast-table td span { color: var(--muted); font-size: .74rem; margin-top: .2rem; }
 .forecast-panel .forecast-method { margin-bottom: 0; font-size: .72rem; }
+.scenario-check { margin-top: 1rem; padding: .8rem 1rem; border-left: 3px solid var(--accent); background: var(--surface); }
+.scenario-check strong { font-size: .8rem; }
+.scenario-check p { margin: .35rem 0 0; }
 .footer-note a { font-weight: 700; }
 @media (max-width: 850px) {
   .symbol-list { max-height: 350px; }

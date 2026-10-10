@@ -12,7 +12,11 @@ import pandas as pd
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from quantlab.forecast import historical_analog_paths, historical_scenarios
+from quantlab.forecast import (
+    evaluate_historical_scenarios,
+    historical_analog_paths,
+    historical_scenarios,
+)
 
 DATASET = Path("data/processed/universe.parquet")
 EXTRAS = Path("data/processed/market_extras.parquet")
@@ -49,6 +53,7 @@ def build_market_data(prices: pd.DataFrame, output: Path = OUTPUT,
         last = float(closes.iloc[-1])
         trailing = closes.loc[closes.index >= closes.index[-1] - pd.DateOffset(years=1)]
         scenarios = historical_scenarios(closes)
+        evaluation = evaluate_historical_scenarios(closes)
         bars = pd.DataFrame({
             field: prices[field][symbol].loc[closes.index] if field in fields else closes
             for field in ("open", "high", "low", "close")
@@ -69,6 +74,10 @@ def build_market_data(prices: pd.DataFrame, output: Path = OUTPUT,
             "dates": dates,
             "adjusted_close": values,
             "historical_scenarios": scenarios,
+            "scenario_evaluation": {
+                years: {key: value for key, value in result.items() if key != "cases"}
+                for years, result in evaluation.items()
+            },
             "forecast_path": f"data/forecast_paths/{symbol}.json",
         }
 

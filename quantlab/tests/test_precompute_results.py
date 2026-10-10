@@ -110,7 +110,9 @@ def test_committed_static_data_covers_full_period_and_19_folds():
     data = Path(__file__).resolve().parents[2] / "static/data"
     manifest = json.loads((data / "manifest.json").read_text())
 
-    assert manifest["bars"] == 5467
+    prices = pd.read_parquet(data.parents[1] / "data/processed/universe.parquet")
+    assert manifest["bars"] == len(prices)
+    assert manifest["last_date"] == prices.index.max().date().isoformat()
     assert manifest["symbols"] == 20
     assert len(manifest["periods"]) == 20
     assert [period["id"] for period in manifest["periods"]][1:] == [

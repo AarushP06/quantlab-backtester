@@ -58,6 +58,67 @@ def historical_scenarios(
     return scenarios
 
 
+def evaluate_historical_scenarios(
+    closes: pd.Series, horizons: tuple[int, ...] = tuple(range(1, 21)),
+    min_train_months: int = 60, min_cases: int = 5,
+) -> dict[str, dict]:
+    """Score expanding-history scenarios at yearly origins against later closes.
+
+    Each origin sees only prices through that month. The unchanged-price
+    baseline predicts a zero return over the same future period. Adjacent
+    yearly tests overlap when the horizon exceeds one year.
+    """
+    month_ends, monthly = _monthly_prices(closes)
+    if min_train_months < 12:
+        raise ValueError("min_train_months must be at least 12")
+    if min_cases < 1:
+        raise ValueError("min_cases must be positive")
+    if any(not isinstance(years, int) or years <= 0 for years in horizons):
+        raise ValueError("Horizons must be positive whole years")
+
+    results = {}
+    for years in horizons:
+        months = years * 12
+        cases = []
+        for origin in range(min_train_months - 1, len(monthly) - months, 12):
+            history = monthly.iloc[:origin + 1]
+            past_returns = (history / history.shift(months, freq="M") - 1).dropna()
+            if len(past_returns) < 12:
+                continue
+            estimates = {name: float(past_returns.quantile(percentile)) for name, percentile in
+                         (("bearish", .1), ("moderate", .5), ("bullish", .9))}
+            actual = float(monthly.iloc[origin + months] / monthly.iloc[origin] - 1)
+            cases.append({
+                "origin": month_ends.index[origin].date().isoformat(),
+                "through": month_ends.index[origin + months].date().isoformat(),
+                "predicted_returns": estimates,
+                "actual_return": actual,
+            })
+        if len(cases) < min_cases:
+            continue
+        results[str(years)] = {
+            "sample_count": len(cases),
+            "first_origin": cases[0]["origin"],
+            "last_origin": cases[-1]["origin"],
+            "median_error_pp": {
+                name: round(100 * float(pd.Series([
+                    abs(case["predicted_returns"][name] - case["actual_return"])
+                    for case in cases
+                ]).median()), 2)
+                for name in ("bearish", "moderate", "bullish")
+            },
+            "flat_baseline_error_pp": round(100 * float(pd.Series([
+                abs(case["actual_return"]) for case in cases
+            ]).median()), 2),
+            "range_coverage": round(sum(
+                case["predicted_returns"]["bearish"] <= case["actual_return"] <=
+                case["predicted_returns"]["bullish"] for case in cases
+            ) / len(cases), 3),
+            "cases": cases,
+        }
+    return results
+
+
 def historical_analog_paths(bars: pd.DataFrame, scenarios: dict[str, dict]) -> dict[str, dict]:
     """Replay past monthly OHLC shapes, adjusted to each scenario endpoint.
 

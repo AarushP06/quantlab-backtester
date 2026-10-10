@@ -65,18 +65,21 @@
               <button type="button" data-view="intraday" aria-pressed="false"><span class="live-dot" aria-hidden="true"></span>Live market · 1m candles</button>
             </div>
             <p id="intraday-note" class="intraday-note" hidden>One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> update automatically when available. Exchange data may be delayed; check the chart's market status and time. These prices are separate from the adjusted backtest history. <a id="open-tradingview" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a></p>
-            <div class="range-bar" role="group" aria-label="Historical data range">
-              <span>Past data</span><button type="button" data-range="1M">1M</button><button type="button" data-range="6M">6M</button><button type="button" data-range="1Y">1Y</button><button type="button" data-range="2Y">2Y</button><button type="button" data-range="3Y">3Y</button><button type="button" data-range="4Y" class="active">4Y</button><button type="button" data-range="5Y">5Y</button><button type="button" data-range="ALL">All</button>
+            <div class="chart-panel-heading"><h3>Saved history detail</h3><span id="detail-history-caption">Close-up with its own price scale.</span></div>
+            <div class="range-bar" role="group" aria-label="Close-up history range">
+              <span>Close-up history</span><button type="button" data-detail-range="1M">1M</button><button type="button" data-detail-range="6M">6M</button><button type="button" data-detail-range="1Y">1Y</button><button type="button" data-detail-range="2Y">2Y</button><button type="button" data-detail-range="3Y">3Y</button><button type="button" data-detail-range="4Y" class="active">4Y</button><button type="button" data-detail-range="5Y">5Y</button><button type="button" data-detail-range="ALL">All</button>
             </div>
+            <div class="chart-wrap history-detail-chart" id="history-detail-chart"><canvas id="history-detail-canvas" role="img" aria-label="Historical adjusted close at its own price scale"></canvas></div>
             <div id="forecast-controls" class="forecast-controls" aria-label="Historical scenario chart controls">
               <label for="forecast-years">Project how many years?<input id="forecast-years" type="number" min="1" max="20" step="1" value="5" inputmode="numeric"></label>
               <label for="forecast-view">Show scenario<select id="forecast-view"><option value="bearish">Bearish</option><option value="moderate" selected>Moderate</option><option value="bullish">Bullish</option></select></label>
               <label for="forecast-scale">Price scale<select id="forecast-scale"><option value="logarithmic" selected>Logarithmic</option><option value="linear">Linear</option></select></label>
               <p id="forecast-limit" class="forecast-limit"></p>
             </div>
-            <div class="chart-panel-heading"><h3>Saved history detail</h3><span>Uses its own price range so long projections cannot flatten it.</span></div>
-            <div class="chart-wrap history-detail-chart" id="history-detail-chart"><canvas id="history-detail-canvas" role="img" aria-label="Historical adjusted close at its own price scale"></canvas></div>
-            <div class="chart-panel-heading"><h3>Extended scenario</h3><span>Shows at least 3 years of past data before the illustrative path.</span></div>
+            <div class="chart-panel-heading"><h3>Extended scenario</h3><span id="extended-history-caption">Choose how much past data leads into the illustrative path.</span></div>
+            <div class="range-bar" role="group" aria-label="Extended chart history range">
+              <span>Chart history</span><button type="button" data-extended-range="1Y">1Y</button><button type="button" data-extended-range="2Y">2Y</button><button type="button" data-extended-range="3Y">3Y</button><button type="button" data-extended-range="4Y" class="active">4Y</button><button type="button" data-extended-range="5Y">5Y</button><button type="button" data-extended-range="10Y">10Y</button><button type="button" data-extended-range="ALL">All</button>
+            </div>
             <div class="chart-wrap stock-chart" id="history-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close and illustrative future price path"></canvas></div>
             <div class="tradingview-chart" id="intraday-chart" aria-label="Live one-minute candlestick chart" hidden></div>
             <div class="stock-facts">
@@ -92,6 +95,7 @@
                 <thead><tr><th>Horizon</th><th>Bearish</th><th>Moderate</th><th>Bullish</th></tr></thead>
                 <tbody id="forecast-body"></tbody>
               </table></div>
+              <div class="scenario-check"><strong>Past holdout check</strong><p id="forecast-evaluation">Loading evaluation…</p></div>
               <p id="forecast-method" class="forecast-method"></p>
             </section>
             <p class="caption" id="history-caption">Adjusted closes account for splits and distributions in the saved feed. The daily change compares the last two available closes; these values are not executable quotes.</p>

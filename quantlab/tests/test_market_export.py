@@ -74,7 +74,9 @@ def test_market_page_and_committed_snapshot_are_present():
     assert "Minute charts and provider quotes appear separately" in page
     assert len(snapshot["symbols"]) == 30
     assert {"AMD", "ADBE", "CRM", "NFLX", "ORCL", "BAC", "KO", "PEP", "DIS", "MCD"}.issubset(snapshot["symbols"])
-    assert snapshot["as_of"] == "2026-09-25"
+    universe = pd.read_parquet(root / "data/processed/universe.parquet")
+    assert snapshot["as_of"] == universe.index.max().date().isoformat()
+    assert all(stock["last_date"] == snapshot["as_of"] for stock in snapshot["symbols"].values())
 
 
 def test_other_markets_are_labeled_chart_only_and_outside_stock_snapshot():

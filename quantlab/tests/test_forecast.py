@@ -6,7 +6,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from quantlab.forecast import historical_analog_paths, historical_scenarios
+from quantlab.forecast import (
+    evaluate_historical_scenarios,
+    historical_analog_paths,
+    historical_scenarios,
+)
 from scripts.precompute_market import build_market_data
 
 
@@ -58,6 +62,24 @@ def test_analog_candles_follow_a_past_up_and_down_shape():
         historical_analog_paths(bars, scenarios)
 
 
+def test_scenario_holdout_uses_only_prices_available_at_each_origin():
+    dates = pd.date_range("2000-01-31", periods=240, freq="ME")
+    closes = pd.Series([100 * 1.01 ** month for month in range(len(dates))], index=dates)
+    result = evaluate_historical_scenarios(closes, horizons=(1,))["1"]
+    assert result["sample_count"] > 10
+    assert result["median_error_pp"]["moderate"] == pytest.approx(0, abs=.01)
+    assert result["flat_baseline_error_pp"] > 0
+
+    revised = closes.copy()
+    revised.loc[revised.index > "2014-12-31"] *= 2
+    original_case = next(case for case in result["cases"] if case["origin"] == "2014-12-31")
+    revised_case = next(case for case in evaluate_historical_scenarios(
+        revised, horizons=(1,)
+    )["1"]["cases"] if case["origin"] == "2014-12-31")
+    assert revised_case["predicted_returns"] == original_case["predicted_returns"]
+    assert revised_case["actual_return"] != original_case["actual_return"]
+
+
 def test_short_history_omits_unsupported_horizons():
     dates = pd.date_range("2020-01-31", periods=25, freq="ME")
     closes = pd.Series(range(100, 125), index=dates, dtype=float)
@@ -93,15 +115,18 @@ def test_market_page_and_snapshot_expose_scenarios_for_all_stocks():
     snapshot = json.loads((root / "static/data/market.json").read_text())
     assert 'id="forecast-body"' in page
     assert 'id="history-detail-canvas"' in page
-    assert 'data-range="4Y" class="active"' in page
-    assert "Shows at least 3 years of past data" in page
+    assert 'data-detail-range="4Y" class="active"' in page
+    assert 'data-extended-range="4Y" class="active"' in page
+    assert "Choose how much past data" in page
     assert "The future line follows" in page
     assert "ghost candles" not in page
     for years in range(1, 5):
-        assert f'data-range="{years}Y"' in page
+        assert f'data-detail-range="{years}Y"' in page
+        assert f'data-extended-range="{years}Y"' in page
         assert f'"{years}Y": {12 * years}' in chart_script
     assert "not predictions" in page
     for stock in snapshot["symbols"].values():
+        assert "1" in stock["scenario_evaluation"]
         assert {"1", "2", "3", "4", "5", "10"}.issubset(stock["historical_scenarios"])
         assert all(1 <= int(years) <= 20 for years in stock["historical_scenarios"])
         paths = json.loads((root / "static" / stock["forecast_path"]).read_text())
