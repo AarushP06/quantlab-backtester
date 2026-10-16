@@ -116,12 +116,13 @@ def test_market_page_and_snapshot_expose_scenarios_for_all_stocks():
     snapshot = json.loads((root / "static/data/market.json").read_text())
     assert 'id="forecast-body"' in page
     assert 'id="history-detail-canvas"' in markets_page
-    assert 'data-detail-range="4Y" class="active"' in markets_page
-    assert 'data-extended-range="4Y" class="active"' in page
+    assert 'data-detail-range="1Y" class="active"' in markets_page
+    assert 'data-extended-range="10Y" class="active"' in page
     assert "The future line follows" in page
     assert "ghost candles" not in page
-    for years in range(1, 5):
+    for years in (1, 5):
         assert f'data-detail-range="{years}Y"' in markets_page
+    for years in (1, 5, 10, 15, 20):
         assert f'data-extended-range="{years}Y"' in page
         assert f'"{years}Y": {12 * years}' in chart_script
     assert "not predictions" in page

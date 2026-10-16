@@ -7,6 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="markets.css">
+  <link rel="stylesheet" href="theme.css">
   <title>Markets · Quantlab</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
   <script src="markets.js" defer></script>
@@ -54,33 +55,50 @@
             <div id="asset-chart" class="tradingview-chart asset-chart" aria-label="One-minute chart for selected market"></div>
           </div>
           <section id="stock-main" class="stock-panel" hidden aria-labelledby="stock-title">
-            <div class="stock-header">
-              <div><div class="eyebrow" id="chart-kicker">Adjusted price history · USD</div><h2 id="stock-title">Select a stock</h2><p id="stock-dates" class="stock-dates"></p><a id="open-forecast" class="forecast-link" href="forecast.html">Explore forecast →</a></div>
-              <div class="quote"><div class="quote-label">Saved adjusted close</div><div id="stock-price" class="quote-price">—</div><div id="stock-change" class="quote-change">—</div></div>
+            <div class="quote-head">
+              <div>
+                <div class="eyebrow" id="chart-kicker">Adjusted price history · USD</div>
+                <h2 id="stock-title">Select a stock</h2>
+                <p id="stock-dates" class="stock-dates"></p>
+              </div>
+              <a id="open-forecast" class="forecast-link" href="forecast.html">Explore forecast →</a>
+            </div>
+            <div class="quote-line">
+              <span id="stock-price" class="quote-price">—</span>
+              <span id="stock-change" class="quote-change">—</span>
+              <span class="quote-asof">At close · <span id="quote-date">—</span></span>
             </div>
             <div id="provider-quote" class="provider-quote" aria-live="polite" hidden>
               <div><div class="eyebrow">Latest provider quote · <span id="provider-symbol"></span></div><div id="provider-price" class="provider-price">—</div></div>
               <div><div id="provider-change" class="provider-change">—</div><div id="provider-status" class="provider-status">Loading quote…</div></div>
               <p class="provider-caption">Source: Finnhub. This quote is not included in the historical chart or backtests.</p>
             </div>
-            <div class="chart-mode" role="group" aria-label="Market chart view">
-              <button type="button" data-view="history" class="active" aria-pressed="true">Historical</button>
-              <button type="button" data-view="intraday" aria-pressed="false"><span class="live-dot" aria-hidden="true"></span>Live market · 1m candles</button>
+            <div class="chart-toolbar">
+              <div class="range-bar" role="group" aria-label="History range">
+                <button type="button" data-detail-range="5D">5D</button><button type="button" data-detail-range="1M">1M</button><button type="button" data-detail-range="6M">6M</button><button type="button" data-detail-range="YTD">YTD</button><button type="button" data-detail-range="1Y" class="active">1Y</button><button type="button" data-detail-range="5Y">5Y</button><button type="button" data-detail-range="ALL">All</button>
+              </div>
+              <div class="chart-mode" role="group" aria-label="Market chart view">
+                <button type="button" data-view="history" class="active" aria-pressed="true">Historical</button>
+                <button type="button" data-view="intraday" aria-pressed="false"><span class="live-dot" aria-hidden="true"></span>Live · 1m</button>
+              </div>
             </div>
-            <p id="intraday-note" class="intraday-note" hidden>One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> update automatically when available. Exchange data may be delayed; check the chart's market status and time. These prices are separate from the adjusted backtest history. <a id="open-tradingview" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a></p>
-            <div class="chart-panel-heading"><h3>Saved history detail</h3><span id="detail-history-caption">Close-up with its own price scale.</span></div>
-            <div class="range-bar" role="group" aria-label="Close-up history range">
-              <span>Close-up history</span><button type="button" data-detail-range="1M">1M</button><button type="button" data-detail-range="6M">6M</button><button type="button" data-detail-range="1Y">1Y</button><button type="button" data-detail-range="2Y">2Y</button><button type="button" data-detail-range="3Y">3Y</button><button type="button" data-detail-range="4Y" class="active">4Y</button><button type="button" data-detail-range="5Y">5Y</button><button type="button" data-detail-range="ALL">All</button>
-            </div>
-            <div class="chart-wrap history-detail-chart" id="history-detail-chart"><canvas id="history-detail-canvas" role="img" aria-label="Historical adjusted close at its own price scale"></canvas></div>
+            <p id="intraday-note" class="intraday-note" hidden>One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> update automatically when available. Exchange data may be delayed. These prices are separate from the adjusted backtest history. <a id="open-tradingview" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a></p>
+            <div class="chart-wrap history-detail-chart" id="history-detail-chart"><canvas id="history-detail-canvas" role="img" aria-label="Historical adjusted close"></canvas></div>
             <div class="tradingview-chart" id="intraday-chart" aria-label="Live one-minute candlestick chart" hidden></div>
-            <div class="stock-facts">
-              <div><span>First available</span><strong id="fact-first">—</strong></div>
-              <div><span>Latest available</span><strong id="fact-last">—</strong></div>
-              <div><span>1-year low</span><strong id="fact-low">—</strong></div>
-              <div><span>1-year high</span><strong id="fact-high">—</strong></div>
+            <p class="chart-foot chart-panel-heading"><span id="detail-history-caption"></span></p>
+            <div class="key-stats" aria-label="Key statistics">
+              <div><span>Previous close</span><strong id="stat-prev">—</strong></div>
+              <div><span>Day's change</span><strong id="stat-day">—</strong></div>
+              <div><span id="stat-range-label">1Y return</span><strong id="stat-range-return">—</strong></div>
+              <div><span>5Y return</span><strong id="stat-5y">—</strong></div>
+              <div class="range52"><span>52-week range</span>
+                <div class="range52-row"><strong id="fact-low">—</strong><div class="range52-track"><i id="range52-marker"></i></div><strong id="fact-high">—</strong></div>
+              </div>
+              <div><span>All-time high</span><strong id="stat-ath">—</strong></div>
+              <div><span>Data since</span><strong id="fact-first">—</strong></div>
+              <div><span>Latest close</span><strong id="fact-last">—</strong></div>
             </div>
-            <p class="caption" id="history-caption">Adjusted closes account for splits and distributions in the saved feed. The daily change compares the last two available closes; these values are not executable quotes.</p>
+            <p class="caption" id="history-caption">Adjusted closes account for splits and distributions in the saved feed. Values are not executable quotes.</p>
           </section>
         </div>
       </div>

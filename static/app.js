@@ -43,6 +43,12 @@ function textCell(row, value, tag = "td") {
   const cell = document.createElement(tag);
   cell.textContent = value;
   row.appendChild(cell);
+  return cell;
+}
+
+function setSignedClass(element, value) {
+  element.classList.toggle("positive", value > 0);
+  element.classList.toggle("negative", value < 0);
 }
 
 function optionsFor(select, choices) {
@@ -116,6 +122,7 @@ function drawChart(canvasId, previousChart, dates, strategyValues, baselineValue
           grid: {color: chartColor("--grid")}
         },
         y: {
+          beginAtZero: false,
           ticks: {color: chartColor("--muted"), callback: value => compactCurrency.format(value)},
           grid: {color: chartColor("--grid")}
         }
@@ -160,6 +167,8 @@ function renderSimulator(strategyResults, baselineResults, sharedDates, names) {
     if (simulatorChart) simulatorChart.destroy();
     simulatorChart = null;
     byId("sim-difference").hidden = true;
+    byId("sim-difference").classList.remove("underperformed");
+    for (const card of document.querySelectorAll(".outcome")) card.classList.remove("winner");
     return;
   }
   status.classList.remove("error");
@@ -174,6 +183,9 @@ function renderSimulator(strategyResults, baselineResults, sharedDates, names) {
   renderOutcome("sim-strategy", names.strategy, strategy, amount);
   renderOutcome("sim-baseline", names.baseline, baseline, amount);
   const difference = amount * (strategy.final_per_dollar - baseline.final_per_dollar);
+  byId("sim-strategy-card").classList.toggle("winner", difference > 0.005);
+  byId("sim-baseline-card").classList.toggle("winner", difference < -0.005);
+  byId("sim-difference").classList.toggle("underperformed", difference < -0.005);
   const differenceLabel = Math.abs(difference) < 0.005 ? "matched" : difference > 0 ? "finished above" : "finished below";
   byId("sim-difference").textContent = differenceLabel === "matched"
     ? "Both selections finished at the same historical value."
@@ -198,8 +210,12 @@ function renderVerdict(strategyResults, baselineResults, names, cost) {
   const wins = differences.filter(item => item.cagr > 0).length;
   const average = key => differences.reduce((sum, item) => sum + item[key], 0) / differences.length;
   byId("verdict-wins").textContent = `${wins} / ${folds.length}`;
-  byId("verdict-gap").textContent = points(average("cagr"));
-  byId("verdict-drawdown").textContent = points(average("drawdown"));
+  const cagrGap = average("cagr");
+  const drawdownGap = average("drawdown");
+  byId("verdict-gap").textContent = points(cagrGap);
+  byId("verdict-drawdown").textContent = points(drawdownGap);
+  setSignedClass(byId("verdict-gap"), cagrGap);
+  setSignedClass(byId("verdict-drawdown"), drawdownGap);
   byId("verdict-line").textContent = names.strategy === names.baseline
     ? "The same portfolio is selected on both sides of the comparison."
     : `${names.strategy} beat ${names.baseline} in ${wins} of ${folds.length} test years at ${cost} bps.`;
@@ -258,7 +274,8 @@ function renderFolds(strategyResults, baselineResults, names) {
     row.appendChild(yearCell);
     textCell(row, percent(strategy.cagr));
     textCell(row, percent(baseline.cagr));
-    textCell(row, `${decimal((strategy.cagr - baseline.cagr) * 100)} pp`);
+    const gap = strategy.cagr - baseline.cagr;
+    setSignedClass(textCell(row, `${decimal(gap * 100)} pp`), gap);
     textCell(row, decimal(strategy.sharpe));
     textCell(row, decimal(baseline.sharpe));
     textCell(row, percent(strategy.max_drawdown));
@@ -280,7 +297,7 @@ function renderFoldChart(strategyResults, baselineResults, names) {
     type: "bar",
     data: {labels: folds.map(period => period.id), datasets: [{
       label: "CAGR gap (percentage points)", data: gaps,
-      backgroundColor: gaps.map(value => value >= 0 ? chartColor("--accent") : "#b85a52"),
+      backgroundColor: gaps.map(value => value >= 0 ? chartColor("--accent") : chartColor("--forecast-down")),
       borderColor: chartColor("--text"),
       borderWidth: folds.map(period => period.id === selected ? 2 : 0)
     }]},

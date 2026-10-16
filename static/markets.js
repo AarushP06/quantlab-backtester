@@ -1,6 +1,6 @@
 let market;
 let selectedSymbol;
-let selectedDetailRange = "4Y";
+let selectedDetailRange = "1Y";
 let selectedView = "history";
 let selectedAsset = "GOLD";
 let selectedMarketKind = "asset";
@@ -28,12 +28,18 @@ const OTHER_MARKETS = [
 const byId = id => document.getElementById(id);
 const dollars = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
 const ranges = {"1M": 1, "6M": 6, "1Y": 12, "2Y": 24, "3Y": 36, "4Y": 48, "5Y": 60, "10Y": 120};
+const signedMoney = value => Number.isFinite(value) ? `${value >= 0 ? "+" : "−"}${dollars.format(Math.abs(value))}` : "—";
 
 function money(value) { return Number.isFinite(value) ? dollars.format(value) : "—"; }
-function percent(value) { return Number.isFinite(value) ? `${value >= 0 ? "+" : ""}${(value * 100).toFixed(2)}%` : "—"; }
+function percent(value) { return Number.isFinite(value) ? `${value >= 0 ? "+" : "−"}${Math.abs(value * 100).toFixed(2)}%` : "—"; }
 
 function paintProviderQuote(quote) {
   if (selectedSymbol !== quote.symbol) return;
+  if (!Number.isFinite(quote.price) || quote.price <= 0) {
+    byId("provider-quote").hidden = true;
+    return;
+  }
+  byId("provider-quote").hidden = false;
   byId("provider-price").textContent = money(quote.price);
   const change = byId("provider-change");
   change.textContent = `${quote.change >= 0 ? "+" : ""}${money(quote.change)} (${percent(quote.change_percent / 100)})`;
@@ -66,9 +72,7 @@ async function refreshProviderQuote() {
     paintProviderQuote(quote);
   } catch (_error) {
     if (selectedSymbol === symbol) {
-      byId("provider-price").textContent = "—";
-      byId("provider-change").textContent = "—";
-      byId("provider-status").textContent = "Latest quote unavailable. Saved history remains available.";
+      byId("provider-quote").hidden = true;
     }
   } finally {
     quotePending.delete(symbol);
@@ -82,8 +86,29 @@ function rangeStart(lastDate, range) {
   return date.toISOString().slice(0, 10);
 }
 
+function rangeFirstIndex(stock, range) {
+  if (range === "5D") return Math.max(stock.dates.length - 6, 0);
+  const start = range === "YTD" ? `${stock.last_date.slice(0, 4)}-01-01` : rangeStart(stock.last_date, range);
+  const index = stock.dates.findIndex(date => date >= start);
+  return Math.max(index, 0);
+}
+
+function withAlpha(color, alpha) {
+  const hex = color.replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return color;
+  const [r, g, b] = [0, 2, 4].map(offset => parseInt(hex.slice(offset, offset + 2), 16));
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function setSigned(id, text, value) {
+  const element = byId(id);
+  element.textContent = text;
+  element.classList.toggle("positive", value > 0);
+  element.classList.toggle("negative", value < 0);
+}
+
 function historyDateLabel(value, range) {
-  const options = range === "1M"
+  const options = ["5D", "1M"].includes(range)
     ? {month: "short", day: "numeric", timeZone: "UTC"}
     : {year: "numeric", month: "short", timeZone: "UTC"};
   return new Date(Number(value)).toLocaleDateString("en-US", options);
@@ -95,38 +120,102 @@ function chartColor(variable) {
 
 function renderChart(stock) {
   if (!window.Chart) throw new Error("Chart.js did not load from the CDN.");
-  byId("detail-history-caption").textContent = `Close-up through ${stock.last_date} · own price scale`;
-  const start = rangeStart(stock.last_date, selectedDetailRange);
-  const first = stock.dates.findIndex(date => date >= start);
-  const dates = stock.dates.slice(Math.max(first, 0));
-  const values = stock.adjusted_close.slice(Math.max(first, 0));
+  const first = rangeFirstIndex(stock, selectedDetailRange);
+  const dates = stock.dates.slice(first);
+  const values = stock.adjusted_close.slice(first);
   const detailFirstDate = Date.parse(`${dates[0]}T00:00:00Z`);
   const lastDate = Date.parse(`${stock.last_date}T00:00:00Z`);
+  const rangeReturn = values[values.length - 1] / values[0] - 1;
+  const label = selectedDetailRange === "ALL" ? "All-time" : selectedDetailRange;
+  byId("stat-range-label").textContent = `${label} return`;
+  setSigned("stat-range-return", percent(rangeReturn), rangeReturn);
+  byId("detail-history-caption").textContent = `${dates[0]} to ${stock.last_date} · ${signedMoney(values[values.length - 1] - values[0])} (${percent(rangeReturn)}) over this range · dashed line marks the start`;
+  const lineColor = chartColor(rangeReturn >= 0 ? "--gain" : "--loss") || chartColor("--accent");
+  const startValue = values[0];
+  const yahooPlugin = {
+    id: "yahooMarkets",
+    afterDatasetsDraw(chart) {
+      const {ctx, chartArea, scales: {y}} = chart;
+      const startY = y.getPixelForValue(startValue);
+      ctx.save();
+      ctx.strokeStyle = chartColor("--muted");
+      ctx.globalAlpha = .6;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(chartArea.left, startY);
+      ctx.lineTo(chartArea.right, startY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      const lastY = y.getPixelForValue(values[values.length - 1]);
+      const tag = money(values[values.length - 1]);
+      ctx.font = "700 11px Inter, system-ui, sans-serif";
+      const width = ctx.measureText(tag).width + 12;
+      ctx.fillStyle = lineColor;
+      ctx.beginPath();
+      ctx.roundRect(chartArea.right + 4, lastY - 10, width, 20, 4);
+      ctx.fill();
+      ctx.fillStyle = chartColor("--surface");
+      ctx.textBaseline = "middle";
+      ctx.fillText(tag, chartArea.right + 10, lastY + .5);
+      const active = chart.tooltip?.getActiveElements?.() || [];
+      if (active.length) {
+        ctx.strokeStyle = chartColor("--muted");
+        ctx.globalAlpha = .55;
+        ctx.beginPath();
+        ctx.moveTo(active[0].element.x, chartArea.top);
+        ctx.lineTo(active[0].element.x, chartArea.bottom);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  };
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  const pad = (high - low) * .08 || high * .02;
   if (historyDetailChart) historyDetailChart.destroy();
   historyDetailChart = new Chart(byId("history-detail-canvas"), {
     type: "line",
     data: {datasets: [{
       label: `${selectedSymbol} saved adjusted close`,
       data: dates.map((date, index) => ({x: Date.parse(`${date}T00:00:00Z`), y: values[index]})),
-      borderColor: chartColor("--accent"), backgroundColor: chartColor("--accent"),
-      borderWidth: 2, pointRadius: 0, tension: 0
+      borderColor: lineColor, fill: "start",
+      backgroundColor: context => {
+        const {ctx, chartArea} = context.chart;
+        if (!chartArea) return "transparent";
+        const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+        gradient.addColorStop(0, withAlpha(lineColor, .28));
+        gradient.addColorStop(1, withAlpha(lineColor, 0));
+        return gradient;
+      },
+      borderWidth: 1.75, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: lineColor,
+      pointHoverBorderColor: chartColor("--surface"), pointHoverBorderWidth: 2, tension: 0
     }]},
+    plugins: [yahooPlugin],
     options: {
       responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
-      plugins: {legend: {display: false}, tooltip: {callbacks: {
-        title: items => new Date(items[0].parsed.x).toLocaleDateString("en-US", {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"}),
-        label: item => money(item.parsed.y)
-      }}},
+      interaction: {mode: "nearest", axis: "x", intersect: false},
+      plugins: {legend: {display: false}, tooltip: {
+        displayColors: false, backgroundColor: chartColor("--surface"), borderColor: chartColor("--border"), borderWidth: 1,
+        titleColor: chartColor("--muted"), bodyColor: chartColor("--text"), padding: 10, cornerRadius: 8,
+        titleFont: {weight: "500", size: 11}, bodyFont: {weight: "700", size: 13},
+        callbacks: {
+          title: items => new Date(items[0].parsed.x).toLocaleDateString("en-US", {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"}),
+          label: item => `${money(item.parsed.y)}  ${percent(item.parsed.y / startValue - 1)}`
+        }
+      }},
       scales: {
-        x: {type: "linear", min: detailFirstDate, max: lastDate, ticks: {color: chartColor("--muted"), maxTicksLimit: 7,
+        x: {type: "linear", min: detailFirstDate, max: lastDate, ticks: {color: chartColor("--muted"), maxTicksLimit: 7, maxRotation: 0,
           callback: value => historyDateLabel(value, selectedDetailRange)},
-          grid: {display: false}},
-        y: {type: "linear", ticks: {color: chartColor("--muted"), maxTicksLimit: 5,
-          callback: value => money(Number(value))}, grid: {color: chartColor("--grid")}}
+          grid: {display: false}, border: {color: chartColor("--border")}},
+        y: {type: "linear", position: "right", min: low - pad, max: high + pad, beginAtZero: false,
+          ticks: {color: chartColor("--muted"), maxTicksLimit: 6, padding: 8,
+            callback: value => Number(value).toLocaleString("en-US", {maximumFractionDigits: Number(value) < 10 ? 2 : 0})},
+          grid: {color: chartColor("--grid")}, border: {display: false, dash: [3, 3]},
+          afterFit: axis => { axis.width = Math.max(axis.width, 78); }}
       }
     }
   });
-
 }
 
 function mountTradingView(target, symbol) {
@@ -289,7 +378,7 @@ function renderList() {
 
 function renderStock() {
   const stock = market.symbols[selectedSymbol];
-  byId("provider-quote").hidden = false;
+  byId("provider-quote").hidden = true;
   byId("provider-symbol").textContent = selectedSymbol;
   byId("provider-price").textContent = "—";
   byId("provider-change").textContent = "—";
@@ -298,13 +387,27 @@ function renderStock() {
   byId("open-forecast").href = `forecast.html?symbol=${encodeURIComponent(selectedSymbol)}`;
   byId("stock-dates").textContent = `History from ${stock.first_date} to ${stock.last_date}`;
   byId("stock-price").textContent = money(stock.last_close);
+  const previousClose = stock.last_close / (1 + stock.daily_change);
+  const dayChange = stock.last_close - previousClose;
   const change = byId("stock-change");
-  change.textContent = `${percent(stock.daily_change)} versus prior close`;
+  change.textContent = `${signedMoney(dayChange)} (${percent(stock.daily_change)})`;
   change.className = `quote-change ${stock.daily_change >= 0 ? "positive" : "negative"}`;
+  byId("quote-date").textContent = stock.last_date;
+  byId("stat-prev").textContent = money(previousClose);
+  setSigned("stat-day", `${signedMoney(dayChange)} (${percent(stock.daily_change)})`, dayChange);
+  const fiveYearStart = stock.adjusted_close[rangeFirstIndex(stock, "5Y")];
+  const fiveYear = stock.last_close / fiveYearStart - 1;
+  setSigned("stat-5y", percent(fiveYear), fiveYear);
+  let athIndex = 0;
+  stock.adjusted_close.forEach((value, index) => { if (value > stock.adjusted_close[athIndex]) athIndex = index; });
+  byId("stat-ath").textContent = `${money(stock.adjusted_close[athIndex])} · ${new Date(`${stock.dates[athIndex]}T00:00:00Z`).toLocaleDateString("en-US", {month: "short", year: "numeric", timeZone: "UTC"})}`;
   byId("fact-first").textContent = stock.first_date;
   byId("fact-last").textContent = stock.last_date;
   byId("fact-low").textContent = money(stock.year_low);
   byId("fact-high").textContent = money(stock.year_high);
+  const span = stock.year_high - stock.year_low;
+  const position = span > 0 ? Math.min(Math.max((stock.last_close - stock.year_low) / span, 0), 1) : .5;
+  byId("range52-marker").style.left = `${(position * 100).toFixed(1)}%`;
   if (selectedView === "intraday") renderIntradayChart();
   else renderChart(stock);
   refreshProviderQuote();
@@ -327,7 +430,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const requestedAsset = params.get("asset")?.toUpperCase();
     const validAsset = OTHER_MARKETS.some(item => item.id === requestedAsset);
     if (validAsset) selectedAsset = requestedAsset;
-    selectedMarketKind = market.symbols[requestedSymbol] && !validAsset ? "stock" : "asset";
+    selectedMarketKind = validAsset ? "asset" : "stock";
     byId("symbol-search").addEventListener("input", renderList);
     byId("market-picker-toggle").addEventListener("click", () => {
       const panel = byId("market-picker-panel");

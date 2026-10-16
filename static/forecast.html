@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="markets.css">
   <link rel="stylesheet" href="forecast.css">
+  <link rel="stylesheet" href="theme.css">
   <title>Forecast · Quantlab</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
   <script src="forecast.js" defer></script>
@@ -32,7 +33,7 @@
         <label for="forecast-scale">Price scale<select id="forecast-scale"><option value="logarithmic" selected>Logarithmic</option><option value="linear">Linear</option></select></label>
         <p id="forecast-limit" class="forecast-limit"></p>
       </div>
-      <div class="range-bar" role="group" aria-label="Chart history range"><span>Past data</span><button type="button" data-extended-range="1Y">1Y</button><button type="button" data-extended-range="2Y">2Y</button><button type="button" data-extended-range="3Y">3Y</button><button type="button" data-extended-range="4Y" class="active">4Y</button><button type="button" data-extended-range="5Y">5Y</button><button type="button" data-extended-range="10Y">10Y</button><button type="button" data-extended-range="ALL">All</button></div>
+      <div class="range-bar" role="group" aria-label="Chart history range"><span>Past data</span><button type="button" data-extended-range="1Y">1Y</button><button type="button" data-extended-range="5Y">5Y</button><button type="button" data-extended-range="10Y" class="active">10Y</button><button type="button" data-extended-range="15Y">15Y</button><button type="button" data-extended-range="20Y">20Y</button><button type="button" data-extended-range="ALL">All</button></div>
       <div class="chart-wrap stock-chart" id="history-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close and illustrative future price path"></canvas></div>
       <p id="extended-history-caption" class="caption"></p>
     </section>

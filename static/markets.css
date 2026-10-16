@@ -40,12 +40,8 @@
 .symbol-row .row-price { display: block; color: var(--muted); font-size: .78rem; margin-top: .15rem; font-variant-numeric: tabular-nums; }
 .symbol-row .row-tag { color: var(--muted); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .symbol-row .row-change { font-variant-numeric: tabular-nums; font-size: .79rem; font-weight: 750; white-space: nowrap; }
-.positive { color: #167654; }
-.negative { color: #b44f4c; }
-@media (prefers-color-scheme: dark) {
-  .positive { color: #7bd9b6; }
-  .negative { color: #ee9a96; }
-}
+.positive { color: var(--gain); }
+.negative { color: var(--loss); }
 .stock-header { display: flex; justify-content: space-between; gap: 1.5rem; align-items: start; border-bottom: 1px solid var(--border); padding-bottom: 1.1rem; }
 .stock-header h2 { font-size: clamp(1.75rem, 3vw, 2.35rem); margin-bottom: .2rem; }
 .stock-dates { font-size: .78rem; margin-bottom: 0; }
@@ -63,7 +59,7 @@
 .chart-mode { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: 1.15rem; }
 .chart-mode button { display: inline-flex; align-items: center; gap: .45rem; padding: .55rem .8rem; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); background: var(--surface); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
 .chart-mode button:hover, .chart-mode button.active { color: var(--text); border-color: var(--accent); background: var(--surface-muted); }
-.live-dot { width: .5rem; height: .5rem; border-radius: 50%; background: #167654; }
+.live-dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--gain); }
 .intraday-note { color: var(--muted); font-size: .78rem; line-height: 1.55; margin: .65rem 0 0; }
 .tradingview-chart { height: 450px; margin-top: 1rem; }
 .tradingview-chart[hidden], .stock-chart[hidden], .range-bar[hidden], .intraday-note[hidden], #history-caption[hidden] { display: none; }

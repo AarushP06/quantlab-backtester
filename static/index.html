@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="theme.css">
   <title>Historical simulation · Quantlab</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
   <script src="app.js" defer></script>
@@ -64,7 +65,7 @@
           <label for="sim-start">Start year<select id="sim-start"></select></label>
         </div>
         <div class="comparison" aria-label="Strategy and buy-and-hold outcomes">
-          <article class="outcome">
+          <article id="sim-strategy-card" class="outcome">
             <h3 id="sim-strategy-name">Strategy</h3>
             <div id="sim-strategy-final" class="value">—</div>
             <div class="value-label">Final historical value</div>
@@ -74,7 +75,7 @@
               <dt>Max drawdown</dt><dd id="sim-strategy-drawdown">—</dd>
             </dl>
           </article>
-          <article class="outcome baseline">
+          <article id="sim-baseline-card" class="outcome baseline">
             <h3 id="sim-baseline-name">Buy and hold</h3>
             <div id="sim-baseline-final" class="value">—</div>
             <div class="value-label">Final historical value</div>
