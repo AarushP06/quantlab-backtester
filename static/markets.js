@@ -4,7 +4,10 @@ let selectedDetailRange = "1Y";
 let selectedView = "history";
 let selectedAsset = "GOLD";
 let selectedMarketKind = "asset";
+let selectedFilter = "all";
+let stocksExpanded = false;
 let historyDetailChart;
+const VISIBLE_STOCKS = 10;
 const providerQuotes = new Map();
 const quotePending = new Set();
 const QUOTE_API_BASE = "https://quantlab-backtester.onrender.com/api/quote/";
@@ -20,37 +23,63 @@ const TRADINGVIEW_SYMBOLS = {
   PG: "NYSE:PG", TSLA: "NASDAQ:TSLA", UNH: "NYSE:UNH",
   V: "NYSE:V", WMT: "NASDAQ:WMT", XOM: "NYSE:XOM"
 };
+// [short name for the list, full name for the heading]
+const COMPANY_NAMES = {
+  AAPL: ["Apple", "Apple Inc."], ABBV: ["AbbVie", "AbbVie Inc."], ADBE: ["Adobe", "Adobe Inc."],
+  AMD: ["AMD", "Advanced Micro Devices"], AMZN: ["Amazon", "Amazon.com, Inc."], AVGO: ["Broadcom", "Broadcom Inc."],
+  BAC: ["Bank of America", "Bank of America Corp."], "BRK-B": ["Berkshire Hathaway", "Berkshire Hathaway Inc."],
+  COST: ["Costco", "Costco Wholesale Corp."], CRM: ["Salesforce", "Salesforce, Inc."], DIS: ["Disney", "The Walt Disney Company"],
+  GOOGL: ["Alphabet", "Alphabet Inc."], HD: ["Home Depot", "The Home Depot, Inc."], JNJ: ["Johnson & Johnson", "Johnson & Johnson"],
+  JPM: ["JPMorgan Chase", "JPMorgan Chase & Co."], KO: ["Coca-Cola", "The Coca-Cola Company"], MA: ["Mastercard", "Mastercard Inc."],
+  MCD: ["McDonald’s", "McDonald’s Corp."], META: ["Meta Platforms", "Meta Platforms, Inc."], MSFT: ["Microsoft", "Microsoft Corp."],
+  NFLX: ["Netflix", "Netflix, Inc."], NVDA: ["NVIDIA", "NVIDIA Corp."], ORCL: ["Oracle", "Oracle Corp."],
+  PEP: ["PepsiCo", "PepsiCo, Inc."], PG: ["Procter & Gamble", "The Procter & Gamble Company"], TSLA: ["Tesla", "Tesla, Inc."],
+  UNH: ["UnitedHealth", "UnitedHealth Group Inc."], V: ["Visa", "Visa Inc."], WMT: ["Walmart", "Walmart Inc."],
+  XOM: ["Exxon Mobil", "Exxon Mobil Corp."]
+};
 const OTHER_MARKETS = [
-  {id: "GOLD", label: "Spot gold", title: "Gold spot / US dollar", type: "Spot metal quote", symbol: "OANDA:XAUUSD"},
-  {id: "BTC", label: "Bitcoin", title: "Bitcoin / US dollar", type: "Bitstamp spot market", symbol: "BITSTAMP:BTCUSD"}
+  {id: "GOLD", code: "XAU", label: "Gold", title: "Gold spot / US dollar", type: "Spot metal quote · 1-minute candles", symbol: "OANDA:XAUUSD"},
+  {id: "BTC", code: "BTC", label: "Bitcoin", title: "Bitcoin / US dollar", type: "Bitstamp spot market · 1-minute candles", symbol: "BITSTAMP:BTCUSD"}
 ];
+const PERIOD_LABELS = {"5D": "past 5 days", "1M": "past month", "6M": "past 6 months", YTD: "year to date", "1Y": "past year", "5Y": "past 5 years"};
 
 const byId = id => document.getElementById(id);
 const dollars = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
+const plain = new Intl.NumberFormat("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const ranges = {"1M": 1, "6M": 6, "1Y": 12, "2Y": 24, "3Y": 36, "4Y": 48, "5Y": 60, "10Y": 120};
 const signedMoney = value => Number.isFinite(value) ? `${value >= 0 ? "+" : "−"}${dollars.format(Math.abs(value))}` : "—";
+const shortName = symbol => COMPANY_NAMES[symbol]?.[0] || symbol;
+const fullName = symbol => COMPANY_NAMES[symbol]?.[1] || symbol;
 
 function money(value) { return Number.isFinite(value) ? dollars.format(value) : "—"; }
 function percent(value) { return Number.isFinite(value) ? `${value >= 0 ? "+" : "−"}${Math.abs(value * 100).toFixed(2)}%` : "—"; }
+function displayDate(iso, options = {day: "numeric", month: "short", year: "numeric"}) {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString(options.day ? "en-GB" : "en-US", {...options, timeZone: "UTC"});
+}
+
+function setProviderUnavailable(message) {
+  byId("provider-price").textContent = "Unavailable right now";
+  byId("provider-change").textContent = "";
+  byId("provider-status").textContent = message;
+}
 
 function paintProviderQuote(quote) {
   if (selectedSymbol !== quote.symbol) return;
   if (!Number.isFinite(quote.price) || quote.price <= 0) {
-    byId("provider-quote").hidden = true;
+    setProviderUnavailable("No valid quote was returned.");
     return;
   }
-  byId("provider-quote").hidden = false;
   byId("provider-price").textContent = money(quote.price);
   const change = byId("provider-change");
   change.textContent = `${quote.change >= 0 ? "+" : ""}${money(quote.change)} (${percent(quote.change_percent / 100)})`;
-  change.className = `provider-change ${quote.change >= 0 ? "positive" : "negative"}`;
+  change.className = `mono ${quote.change >= 0 ? "positive" : "negative"}`;
   const quoteDate = quote.quote_time || quote.fetched_at;
   const label = quote.quote_time ? "Quote time" : "Checked";
   const formatted = new Date(quoteDate).toLocaleString("en-US", {
     timeZone: "America/New_York", year: "numeric", month: "short", day: "numeric",
     hour: "numeric", minute: "2-digit", timeZoneName: "short"
   });
-  byId("provider-status").textContent = `${label}: ${formatted}`;
+  byId("provider-status").textContent = `${label}: ${formatted}.`;
 }
 
 async function refreshProviderQuote() {
@@ -62,7 +91,6 @@ async function refreshProviderQuote() {
     return;
   }
   quotePending.add(symbol);
-  byId("provider-status").textContent = "Checking latest quote…";
   try {
     const response = await fetch(`${QUOTE_API_BASE}${encodeURIComponent(symbol)}`, {cache: "no-store"});
     if (!response.ok) throw new Error(`Quote service returned ${response.status}`);
@@ -71,8 +99,8 @@ async function refreshProviderQuote() {
     providerQuotes.set(symbol, {quote, loadedAt: Date.now()});
     paintProviderQuote(quote);
   } catch (_error) {
-    if (selectedSymbol === symbol) {
-      byId("provider-quote").hidden = true;
+    if (selectedSymbol === symbol && !providerQuotes.has(symbol)) {
+      setProviderUnavailable("The quote service could not be reached.");
     }
   } finally {
     quotePending.delete(symbol);
@@ -129,44 +157,48 @@ function renderChart(stock) {
   const label = selectedDetailRange === "ALL" ? "All-time" : selectedDetailRange;
   byId("stat-range-label").textContent = `${label} return`;
   setSigned("stat-range-return", percent(rangeReturn), rangeReturn);
-  byId("detail-history-caption").textContent = `${dates[0]} to ${stock.last_date} · ${signedMoney(values[values.length - 1] - values[0])} (${percent(rangeReturn)}) over this range · dashed line marks the start`;
-  const lineColor = chartColor(rangeReturn >= 0 ? "--gain" : "--loss") || chartColor("--accent");
-  const startValue = values[0];
-  const yahooPlugin = {
-    id: "yahooMarkets",
+  byId("stat-range-from").textContent = `From ${money(values[0])}`;
+  setSigned("period-change", percent(rangeReturn), rangeReturn);
+  byId("period-label").textContent = PERIOD_LABELS[selectedDetailRange] || `since ${displayDate(dates[0], {month: "short", year: "numeric"})}`;
+  byId("detail-history-caption").textContent = `Saved snapshot · ${displayDate(dates[0])} to ${displayDate(stock.last_date)} · ${signedMoney(values[values.length - 1] - values[0])} over this range`;
+  const lineColor = chartColor("--accent");
+  const surface = chartColor("--surface");
+  const muted = chartColor("--muted");
+  const latestPlugin = {
+    id: "latestClose",
     afterDatasetsDraw(chart) {
-      const {ctx, chartArea, scales: {y}} = chart;
-      const startY = y.getPixelForValue(startValue);
+      const {ctx, chartArea, scales: {x, y}} = chart;
+      const lastValue = values[values.length - 1];
+      const lastX = x.getPixelForValue(lastDate);
+      const lastY = y.getPixelForValue(lastValue);
       ctx.save();
-      ctx.strokeStyle = chartColor("--muted");
-      ctx.globalAlpha = .6;
-      ctx.setLineDash([2, 3]);
-      ctx.beginPath();
-      ctx.moveTo(chartArea.left, startY);
-      ctx.lineTo(chartArea.right, startY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.globalAlpha = 1;
-      const lastY = y.getPixelForValue(values[values.length - 1]);
-      const tag = money(values[values.length - 1]);
-      ctx.font = "700 11px Inter, system-ui, sans-serif";
-      const width = ctx.measureText(tag).width + 12;
-      ctx.fillStyle = lineColor;
-      ctx.beginPath();
-      ctx.roundRect(chartArea.right + 4, lastY - 10, width, 20, 4);
-      ctx.fill();
-      ctx.fillStyle = chartColor("--surface");
-      ctx.textBaseline = "middle";
-      ctx.fillText(tag, chartArea.right + 10, lastY + .5);
       const active = chart.tooltip?.getActiveElements?.() || [];
       if (active.length) {
-        ctx.strokeStyle = chartColor("--muted");
-        ctx.globalAlpha = .55;
+        ctx.strokeStyle = muted;
+        ctx.globalAlpha = .45;
         ctx.beginPath();
         ctx.moveTo(active[0].element.x, chartArea.top);
         ctx.lineTo(active[0].element.x, chartArea.bottom);
         ctx.stroke();
+        ctx.globalAlpha = 1;
       }
+      ctx.fillStyle = lineColor;
+      ctx.strokeStyle = surface;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      const tag = plain.format(lastValue);
+      ctx.font = "400 10px 'IBM Plex Mono', ui-monospace, monospace";
+      const width = ctx.measureText(tag).width + 14;
+      ctx.fillStyle = lineColor;
+      ctx.beginPath();
+      ctx.roundRect(chartArea.right + 6, lastY - 11.5, width, 23, 4);
+      ctx.fill();
+      ctx.fillStyle = chartColor("--on-accent");
+      ctx.textBaseline = "middle";
+      ctx.fillText(tag, chartArea.right + 13, lastY + .5);
       ctx.restore();
     }
   };
@@ -184,35 +216,37 @@ function renderChart(stock) {
         const {ctx, chartArea} = context.chart;
         if (!chartArea) return "transparent";
         const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-        gradient.addColorStop(0, withAlpha(lineColor, .28));
+        gradient.addColorStop(0, withAlpha(lineColor, .1));
         gradient.addColorStop(1, withAlpha(lineColor, 0));
         return gradient;
       },
       borderWidth: 1.75, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: lineColor,
-      pointHoverBorderColor: chartColor("--surface"), pointHoverBorderWidth: 2, tension: 0
+      pointHoverBorderColor: surface, pointHoverBorderWidth: 2, tension: 0
     }]},
-    plugins: [yahooPlugin],
+    plugins: [latestPlugin],
     options: {
       responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+      layout: {padding: {top: 8}},
       interaction: {mode: "nearest", axis: "x", intersect: false},
       plugins: {legend: {display: false}, tooltip: {
-        displayColors: false, backgroundColor: chartColor("--surface"), borderColor: chartColor("--border"), borderWidth: 1,
-        titleColor: chartColor("--muted"), bodyColor: chartColor("--text"), padding: 10, cornerRadius: 8,
-        titleFont: {weight: "500", size: 11}, bodyFont: {weight: "700", size: 13},
+        displayColors: false, backgroundColor: surface, borderColor: chartColor("--border"), borderWidth: 1,
+        titleColor: muted, bodyColor: chartColor("--text"), padding: 10, cornerRadius: 6,
+        titleFont: {family: "Inter", weight: "400", size: 11}, bodyFont: {family: "IBM Plex Mono", weight: "400", size: 12},
         callbacks: {
-          title: items => new Date(items[0].parsed.x).toLocaleDateString("en-US", {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"}),
-          label: item => `${money(item.parsed.y)}  ${percent(item.parsed.y / startValue - 1)}`
+          title: items => new Date(items[0].parsed.x).toLocaleDateString("en-GB", {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"}),
+          label: item => `${money(item.parsed.y)}  ${percent(item.parsed.y / values[0] - 1)}`
         }
       }},
       scales: {
-        x: {type: "linear", min: detailFirstDate, max: lastDate, ticks: {color: chartColor("--muted"), maxTicksLimit: 7, maxRotation: 0,
-          callback: value => historyDateLabel(value, selectedDetailRange)},
-          grid: {display: false}, border: {color: chartColor("--border")}},
+        x: {type: "linear", min: detailFirstDate, max: lastDate,
+          ticks: {color: muted, font: {family: "Inter", size: 10}, maxTicksLimit: 6, maxRotation: 0, padding: 10,
+            callback: value => historyDateLabel(value, selectedDetailRange)},
+          grid: {display: false}, border: {display: false}},
         y: {type: "linear", position: "right", min: low - pad, max: high + pad, beginAtZero: false,
-          ticks: {color: chartColor("--muted"), maxTicksLimit: 6, padding: 8,
-            callback: value => Number(value).toLocaleString("en-US", {maximumFractionDigits: Number(value) < 10 ? 2 : 0})},
-          grid: {color: chartColor("--grid")}, border: {display: false, dash: [3, 3]},
-          afterFit: axis => { axis.width = Math.max(axis.width, 78); }}
+          ticks: {color: muted, font: {family: "IBM Plex Mono", size: 10}, maxTicksLimit: 8, padding: 20, includeBounds: false,
+            callback: value => plain.format(Number(value))},
+          grid: {color: chartColor("--grid")}, border: {display: false},
+          afterFit: axis => { axis.width = Math.max(axis.width, 84); }}
       }
     }
   });
@@ -254,12 +288,22 @@ function renderIntradayChart() {
 
 function renderAsset() {
   const asset = OTHER_MARKETS.find(item => item.id === selectedAsset);
+  byId("asset-monogram").textContent = asset.label[0];
   byId("asset-type").textContent = asset.type;
   byId("asset-title").textContent = asset.title;
-  byId("asset-symbol").textContent = asset.symbol;
+  byId("asset-symbol").textContent = `${asset.code}   /   ${asset.symbol}   /   USD`;
   byId("asset-full-chart").href = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(asset.symbol)}`;
   byId("asset-chart").setAttribute("aria-label", `One-minute chart for ${asset.title}`);
   mountTradingView(byId("asset-chart"), asset.symbol);
+}
+
+function syncSelection() {
+  for (const row of document.querySelectorAll("[data-symbol], [data-asset]")) {
+    const active = row.dataset.asset
+      ? selectedMarketKind === "asset" && row.dataset.asset === selectedAsset
+      : selectedMarketKind === "stock" && row.dataset.symbol === selectedSymbol;
+    row.setAttribute("aria-pressed", String(active));
+  }
 }
 
 function showMarket(kind) {
@@ -268,15 +312,11 @@ function showMarket(kind) {
   byId("stock-main").hidden = kind !== "stock";
   if (kind === "stock") byId("asset-chart").replaceChildren();
   else byId("intraday-chart").replaceChildren();
+  const asset = OTHER_MARKETS.find(item => item.id === selectedAsset);
   byId("market-picker-current").textContent = kind === "asset"
-    ? OTHER_MARKETS.find(item => item.id === selectedAsset).label
+    ? `${asset.code} · ${asset.label}`
     : `${selectedSymbol} · ${money(market.symbols[selectedSymbol].last_close)}`;
-  for (const row of document.querySelectorAll(".symbol-row")) {
-    const active = row.dataset.asset
-      ? kind === "asset" && row.dataset.asset === selectedAsset
-      : kind === "stock" && row.dataset.symbol === selectedSymbol;
-    row.setAttribute("aria-pressed", String(active));
-  }
+  syncSelection();
 }
 
 function setChartView(view) {
@@ -290,14 +330,12 @@ function setChartView(view) {
     button.classList.toggle("active", active);
     button.setAttribute("aria-pressed", String(active));
   }
-  byId("intraday-note").hidden = view !== "intraday";
-  byId("history-caption").hidden = view !== "history";
   byId("chart-kicker").textContent = view === "intraday"
-    ? "Intraday market chart · USD" : "Adjusted price history · USD";
+    ? "1-minute candles · TradingView" : "Adjusted close · USD";
   byId("intraday-chart").hidden = view !== "intraday";
   byId("history-detail-chart").hidden = view !== "history";
-  for (const heading of document.querySelectorAll(".chart-panel-heading")) heading.hidden = view !== "history";
-  for (const bar of document.querySelectorAll(".range-bar")) bar.hidden = view !== "history";
+  byId("range-row").hidden = view !== "history";
+  byId("history-provenance").hidden = view !== "history";
   if (view === "intraday") renderIntradayChart();
   else renderChart(market.symbols[selectedSymbol]);
 }
@@ -307,24 +345,6 @@ function closePicker() {
   byId("market-picker-toggle").setAttribute("aria-expanded", "false");
 }
 
-function marketRow(name, detail, trailing, active, onSelect) {
-  const row = document.createElement("button");
-  row.type = "button";
-  row.className = "symbol-row";
-  row.setAttribute("aria-pressed", String(active));
-  const label = document.createElement("span");
-  const ticker = document.createElement("span");
-  ticker.className = "ticker";
-  ticker.textContent = name;
-  const sub = document.createElement("span");
-  sub.className = "row-price";
-  sub.textContent = detail;
-  label.append(ticker, sub);
-  row.append(label, trailing);
-  row.addEventListener("click", onSelect);
-  return row;
-}
-
 function selectMarket(param, value) {
   const url = new URL(window.location.href);
   url.searchParams.set(param, value);
@@ -332,106 +352,164 @@ function selectMarket(param, value) {
   history.replaceState(null, "", url);
 }
 
+function textSpan(className, text) {
+  const span = document.createElement("span");
+  span.className = className;
+  span.textContent = text;
+  return span;
+}
+
+function stockRow(symbol, stock) {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = "market-row";
+  row.dataset.symbol = symbol;
+  const identity = document.createElement("span");
+  identity.append(textSpan("symbol", symbol), textSpan("name", shortName(symbol)));
+  const values = document.createElement("span");
+  values.className = "values";
+  values.append(textSpan("price", plain.format(stock.last_close)),
+    textSpan(`change ${stock.daily_change >= 0 ? "positive" : "negative"}`, percent(stock.daily_change)));
+  row.append(identity, values);
+  row.addEventListener("click", () => {
+    selectedSymbol = symbol;
+    selectMarket("symbol", symbol);
+    showMarket("stock");
+    renderStock();
+    closePicker();
+  });
+  return row;
+}
+
+function assetRow(asset) {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = "other-row";
+  row.dataset.asset = asset.id;
+  row.append(textSpan("symbol", asset.code), textSpan("name", asset.label), textSpan("tag", "Chart only"));
+  row.addEventListener("click", () => {
+    selectedAsset = asset.id;
+    selectMarket("asset", asset.id);
+    showMarket("asset");
+    renderAsset();
+    closePicker();
+  });
+  return row;
+}
+
 function renderList() {
   const query = byId("symbol-search").value.trim().toUpperCase();
-  const list = byId("symbol-list");
-  list.replaceChildren();
-  for (const asset of OTHER_MARKETS) {
-    if (!asset.id.includes(query) && !asset.label.toUpperCase().includes(query)) continue;
-    const tag = document.createElement("span");
-    tag.className = "row-tag";
-    tag.textContent = "1m chart";
-    const row = marketRow(asset.id, asset.label, tag,
-      selectedMarketKind === "asset" && asset.id === selectedAsset, () => {
-        selectedAsset = asset.id;
-        selectMarket("asset", asset.id);
-        showMarket("asset");
-        renderAsset();
-        closePicker();
-      });
-    row.dataset.asset = asset.id;
-    list.append(row);
-  }
-  for (const [symbol, stock] of Object.entries(market.symbols)) {
-    if (!symbol.includes(query)) continue;
-    const change = document.createElement("span");
-    change.className = `row-change ${stock.daily_change >= 0 ? "positive" : "negative"}`;
-    change.textContent = percent(stock.daily_change);
-    const row = marketRow(symbol, money(stock.last_close), change,
-      selectedMarketKind === "stock" && symbol === selectedSymbol, () => {
-        selectedSymbol = symbol;
-        selectMarket("symbol", symbol);
-        showMarket("stock");
-        renderStock();
-        closePicker();
-      });
-    row.dataset.symbol = symbol;
-    list.append(row);
-  }
-  if (!list.children.length) {
-    const empty = document.createElement("p");
-    empty.className = "caption";
-    empty.textContent = "No symbols match your search.";
-    list.append(empty);
-  }
+  const matches = terms => !query || terms.some(term => term.toUpperCase().includes(query));
+  const stocks = Object.keys(market.symbols).filter(symbol => matches([symbol, ...(COMPANY_NAMES[symbol] || [])]));
+  const assets = OTHER_MARKETS.filter(asset => matches([asset.id, asset.code, asset.label, asset.title]));
+  const showStocks = selectedFilter !== "other" && stocks.length > 0;
+  const showAssets = selectedFilter !== "stocks" && assets.length > 0;
+  byId("stock-section").hidden = !showStocks;
+  byId("other-section").hidden = !showAssets;
+  byId("list-empty").hidden = showStocks || showAssets;
+
+  const collapsible = !query && stocks.length > VISIBLE_STOCKS;
+  const visible = collapsible && !stocksExpanded ? stocks.slice(0, VISIBLE_STOCKS) : stocks;
+  byId("symbol-list").replaceChildren(...visible.map(symbol => stockRow(symbol, market.symbols[symbol])));
+  byId("other-list").replaceChildren(...assets.map(assetRow));
+  const more = byId("browse-more");
+  more.hidden = !collapsible;
+  more.setAttribute("aria-expanded", String(stocksExpanded));
+  byId("browse-more-label").textContent = stocksExpanded
+    ? "Show fewer stocks" : `Show ${stocks.length - VISIBLE_STOCKS} more stocks`;
+  syncSelection();
 }
 
 function renderStock() {
   const stock = market.symbols[selectedSymbol];
-  byId("provider-quote").hidden = true;
+  const tradingViewSymbol = TRADINGVIEW_SYMBOLS[selectedSymbol];
+  const exchange = tradingViewSymbol ? tradingViewSymbol.split(":")[0] : "US";
   byId("provider-symbol").textContent = selectedSymbol;
-  byId("provider-price").textContent = "—";
-  byId("provider-change").textContent = "—";
-  byId("provider-status").textContent = "Checking latest quote…";
-  byId("stock-title").textContent = selectedSymbol;
+  byId("provider-price").textContent = "Checking latest quote…";
+  byId("provider-change").textContent = "";
+  byId("provider-status").textContent = "";
+  byId("stock-monogram").textContent = shortName(selectedSymbol)[0];
+  byId("stock-title").textContent = fullName(selectedSymbol);
+  byId("stock-listing").textContent = `${selectedSymbol}   /   ${exchange}   /   USD`;
   byId("open-forecast").href = `forecast.html?symbol=${encodeURIComponent(selectedSymbol)}`;
-  byId("stock-dates").textContent = `History from ${stock.first_date} to ${stock.last_date}`;
   byId("stock-price").textContent = money(stock.last_close);
   const previousClose = stock.last_close / (1 + stock.daily_change);
   const dayChange = stock.last_close - previousClose;
   const change = byId("stock-change");
-  change.textContent = `${signedMoney(dayChange)} (${percent(stock.daily_change)})`;
-  change.className = `quote-change ${stock.daily_change >= 0 ? "positive" : "negative"}`;
-  byId("quote-date").textContent = stock.last_date;
+  change.textContent = `${signedMoney(dayChange)}  (${percent(stock.daily_change)})`;
+  change.className = `quote-change mono ${stock.daily_change >= 0 ? "positive" : "negative"}`;
+  byId("quote-date").textContent = `${displayDate(stock.last_date)} · Close`;
   byId("stat-prev").textContent = money(previousClose);
-  setSigned("stat-day", `${signedMoney(dayChange)} (${percent(stock.daily_change)})`, dayChange);
+  byId("stat-prev-date").textContent = stock.dates.length > 1 ? displayDate(stock.dates[stock.dates.length - 2]) : "—";
+  setSigned("stat-day", percent(stock.daily_change), dayChange);
+  byId("stat-day-detail").textContent = `${signedMoney(dayChange)} vs. previous close`;
   const fiveYearStart = stock.adjusted_close[rangeFirstIndex(stock, "5Y")];
   const fiveYear = stock.last_close / fiveYearStart - 1;
   setSigned("stat-5y", percent(fiveYear), fiveYear);
+  byId("stat-5y-from").textContent = `From ${money(fiveYearStart)}`;
   let athIndex = 0;
   stock.adjusted_close.forEach((value, index) => { if (value > stock.adjusted_close[athIndex]) athIndex = index; });
-  byId("stat-ath").textContent = `${money(stock.adjusted_close[athIndex])} · ${new Date(`${stock.dates[athIndex]}T00:00:00Z`).toLocaleDateString("en-US", {month: "short", year: "numeric", timeZone: "UTC"})}`;
-  byId("fact-first").textContent = stock.first_date;
-  byId("fact-last").textContent = stock.last_date;
-  byId("fact-low").textContent = money(stock.year_low);
-  byId("fact-high").textContent = money(stock.year_high);
+  byId("stat-ath").textContent = money(stock.adjusted_close[athIndex]);
+  byId("stat-ath-date").textContent = `Adjusted close · ${displayDate(stock.dates[athIndex], {month: "short", year: "numeric"})}`;
+  byId("fact-first").textContent = displayDate(stock.first_date);
+  byId("range52-label").textContent = `${money(stock.year_low)} — ${money(stock.year_high)}`;
   const span = stock.year_high - stock.year_low;
   const position = span > 0 ? Math.min(Math.max((stock.last_close - stock.year_low) / span, 0), 1) : .5;
-  byId("range52-marker").style.left = `${(position * 100).toFixed(1)}%`;
+  byId("range52-fill").style.width = `${(position * 100).toFixed(1)}%`;
+  byId("range52-marker").style.left = `calc(${(position * 100).toFixed(1)}% - ${(position * 8).toFixed(1)}px)`;
   if (selectedView === "intraday") renderIntradayChart();
   else renderChart(stock);
   refreshProviderQuote();
 }
 
+async function loadStudyCount() {
+  try {
+    const response = await fetch("data/manifest.json");
+    if (!response.ok) return;
+    const manifest = await response.json();
+    if (Number.isFinite(manifest.symbols)) byId("study-count").textContent = String(manifest.symbols);
+  } catch (_error) {
+    // Keep the default count in the HTML.
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   const status = byId("market-status");
+  loadStudyCount();
   try {
     const response = await fetch("data/market.json");
     if (!response.ok) throw new Error(`Could not load market snapshot (${response.status})`);
     market = await response.json();
     const symbols = Object.keys(market.symbols);
     if (!symbols.length) throw new Error("The market snapshot has no symbols.");
-    byId("snapshot-date").textContent = market.as_of;
-    byId("hero-symbol-count").textContent = String(symbols.length);
-    byId("list-symbol-count").textContent = String(symbols.length + OTHER_MARKETS.length);
+    byId("snapshot-date").textContent = displayDate(market.as_of);
+    const total = symbols.length + OTHER_MARKETS.length;
+    byId("list-symbol-count").textContent = String(total);
+    byId("filter-count-all").textContent = String(total);
+    byId("filter-count-stocks").textContent = String(symbols.length);
+    byId("filter-count-other").textContent = String(OTHER_MARKETS.length);
     const params = new URLSearchParams(window.location.search);
     const requestedSymbol = params.get("symbol")?.toUpperCase();
     selectedSymbol = market.symbols[requestedSymbol] ? requestedSymbol : symbols[0];
+    stocksExpanded = symbols.indexOf(selectedSymbol) >= VISIBLE_STOCKS;
     const requestedAsset = params.get("asset")?.toUpperCase();
     const validAsset = OTHER_MARKETS.some(item => item.id === requestedAsset);
     if (validAsset) selectedAsset = requestedAsset;
     selectedMarketKind = validAsset ? "asset" : "stock";
     byId("symbol-search").addEventListener("input", renderList);
+    byId("browse-more").addEventListener("click", () => {
+      stocksExpanded = !stocksExpanded;
+      renderList();
+    });
+    for (const button of document.querySelectorAll("[data-filter]")) {
+      button.addEventListener("click", () => {
+        selectedFilter = button.dataset.filter;
+        for (const item of document.querySelectorAll("[data-filter]")) {
+          item.setAttribute("aria-pressed", String(item === button));
+        }
+        renderList();
+      });
+    }
     byId("market-picker-toggle").addEventListener("click", () => {
       const panel = byId("market-picker-panel");
       panel.hidden = !panel.hidden;
@@ -440,7 +518,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     document.addEventListener("keydown", event => { if (event.key === "Escape") closePicker(); });
     document.addEventListener("click", event => {
-      if (!event.target.closest(".asset-sidebar")) closePicker();
+      if (!event.target.closest(".market-browser")) closePicker();
     });
     for (const button of document.querySelectorAll("[data-view]")) {
       button.addEventListener("click", () => setChartView(button.dataset.view));
@@ -461,6 +539,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.setInterval(() => {
       if (selectedMarketKind === "stock") refreshProviderQuote();
     }, 60000);
+    // Canvas text needs the web fonts before the first chart draw.
+    await document.fonts?.ready?.catch(() => {});
     renderList();
     if (selectedMarketKind === "stock") {
       showMarket("stock");

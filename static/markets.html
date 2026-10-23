@@ -5,106 +5,167 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=Instrument+Serif&family=Inter:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="markets.css">
-  <link rel="stylesheet" href="theme.css">
   <title>Markets · Quantlab</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
   <script src="markets.js" defer></script>
 </head>
 <body class="markets-page">
-  <main>
+  <header class="app-header">
     <nav class="app-nav" aria-label="Main navigation">
-      <a class="brand" href="index.html">Quantlab</a>
+      <a class="brand" href="index.html"><img src="img/markets/quantlab-mark.svg" width="30.4708" height="30.0352" alt=""><span>Quantlab</span></a>
       <div class="nav-links"><a href="markets.html" aria-current="page">Markets</a><a href="forecast.html">Forecast</a><a href="index.html">Backtest lab</a></div>
+      <div class="workspace-context"><img src="img/markets/chart-no-axes-combined.svg" width="16" height="16" alt=""><span>Research workspace</span></div>
     </nav>
+    <aside class="data-notice" role="note">
+      <img src="img/markets/info.svg" width="14" height="14" alt="">
+      <p>Stock history and backtests use a saved snapshot of adjusted daily closes through <strong id="snapshot-date">…</strong>. Minute charts and provider quotes appear separately and may be delayed.</p>
+    </aside>
+  </header>
 
-    <header class="market-hero">
-      <div>
-        <div class="eyebrow">Market data / stocks, gold, and Bitcoin</div>
-        <h1>Markets</h1>
-        <p>Explore <span id="hero-symbol-count">30</span> US stocks, gold, and Bitcoin. The backtest study uses 20 stocks.</p>
+  <div class="workspace">
+    <aside class="market-browser" aria-labelledby="browser-title">
+      <div class="browser-heading">
+        <h1 id="browser-title">Markets</h1>
+        <span id="list-symbol-count" class="mono">—</span>
       </div>
-      <div class="snapshot-label">Historical snapshot<br><strong id="snapshot-date">Loading…</strong></div>
-    </header>
-
-    <aside class="notice" role="note">Stock history and backtests use a saved snapshot. Minute charts and provider quotes appear separately and may be delayed. The backtest stocks were selected today, which biases historical comparisons upward. Past performance does not predict future returns.</aside>
-    <p id="market-status" class="status" role="status" aria-live="polite">Loading saved market data…</p>
-
-    <section class="surface asset-panel" aria-labelledby="asset-heading">
-      <div class="asset-heading">
-        <div><div class="eyebrow">Market explorer</div><h2 id="asset-heading">Choose a market</h2></div>
-        <p>Pick a market to explore its chart.</p>
-      </div>
-      <div class="asset-workspace">
-        <div class="asset-sidebar">
-          <button id="market-picker-toggle" class="market-picker-toggle" type="button" aria-expanded="false" aria-controls="market-picker-panel"><span><small>Selected market</small><strong id="market-picker-current">Loading…</strong></span><span aria-hidden="true">▾</span></button>
-          <div id="market-picker-panel" class="market-picker-panel" hidden>
-            <div class="sidebar-heading"><span class="eyebrow">All markets</span><span class="category-count" id="list-symbol-count">32</span></div>
-            <label class="search-label" for="symbol-search">Find a market<input id="symbol-search" type="search" placeholder="Search ticker or name" autocomplete="off"></label>
-            <div id="symbol-list" class="symbol-list" aria-label="Markets"></div>
-          </div>
+      <button id="market-picker-toggle" class="market-picker-toggle" type="button" aria-expanded="false" aria-controls="market-picker-panel">
+        <span><small>Selected market</small><strong id="market-picker-current">Loading…</strong></span>
+        <img src="img/markets/chevron-down.svg" width="13" height="13" alt="">
+      </button>
+      <div id="market-picker-panel" class="market-picker-panel" hidden>
+        <label class="market-search" for="symbol-search">
+          <img src="img/markets/search.svg" width="16" height="16" alt="">
+          <span class="visually-hidden">Find a market</span>
+          <input id="symbol-search" type="search" placeholder="Search name or symbol" autocomplete="off">
+        </label>
+        <div class="asset-filters" role="group" aria-label="Filter markets">
+          <button type="button" data-filter="all" aria-pressed="true">All <span id="filter-count-all">—</span></button>
+          <button type="button" data-filter="stocks" aria-pressed="false">Stocks <span id="filter-count-stocks">—</span></button>
+          <button type="button" data-filter="other" aria-pressed="false">Other <span id="filter-count-other">—</span></button>
         </div>
-        <div class="browser-main">
-          <div id="asset-main" class="asset-main">
-            <div class="asset-detail">
-              <div><div id="asset-type" class="eyebrow"></div><h3 id="asset-title">Loading chart…</h3><p id="asset-symbol" class="asset-symbol"></p></div>
-              <a id="asset-full-chart" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a>
-            </div>
-            <p class="asset-note">One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>. Data may be delayed or require a subscription. Gold and Bitcoin are chart-only here and are not in the stock backtests.</p>
-            <div id="asset-chart" class="tradingview-chart asset-chart" aria-label="One-minute chart for selected market"></div>
-          </div>
-          <section id="stock-main" class="stock-panel" hidden aria-labelledby="stock-title">
-            <div class="quote-head">
+        <section id="stock-section" class="stock-markets" aria-label="US stocks">
+          <div class="column-headings"><span>US STOCKS</span><span>Snapshot · USD / day %</span></div>
+          <div id="symbol-list" class="stock-list"></div>
+          <button id="browse-more" class="browse-more" type="button" aria-expanded="false" aria-controls="symbol-list">
+            <span id="browse-more-label">Show more stocks</span>
+            <img src="img/markets/chevron-down.svg" width="13" height="13" alt="">
+          </button>
+        </section>
+        <section id="other-section" class="other-markets" aria-labelledby="other-heading">
+          <h2 id="other-heading">OTHER MARKETS</h2>
+          <div id="other-list" class="other-list"></div>
+          <p>Gold and Bitcoin are chart-only and excluded from stock backtests.</p>
+        </section>
+        <p id="list-empty" class="list-empty" hidden>No markets match your search.</p>
+      </div>
+    </aside>
+
+    <main class="selected-market">
+      <p id="market-status" class="status" role="status" aria-live="polite">Loading saved market data…</p>
+
+      <section id="stock-main" class="stock-panel" hidden aria-labelledby="stock-title">
+        <div class="stock-overview">
+          <div class="identity-row">
+            <div class="stock-identity">
+              <div id="stock-monogram" class="monogram" aria-hidden="true">—</div>
               <div>
-                <div class="eyebrow" id="chart-kicker">Adjusted price history · USD</div>
-                <h2 id="stock-title">Select a stock</h2>
-                <p id="stock-dates" class="stock-dates"></p>
-              </div>
-              <a id="open-forecast" class="forecast-link" href="forecast.html">Explore forecast →</a>
-            </div>
-            <div class="quote-line">
-              <span id="stock-price" class="quote-price">—</span>
-              <span id="stock-change" class="quote-change">—</span>
-              <span class="quote-asof">At close · <span id="quote-date">—</span></span>
-            </div>
-            <div id="provider-quote" class="provider-quote" aria-live="polite" hidden>
-              <div><div class="eyebrow">Latest provider quote · <span id="provider-symbol"></span></div><div id="provider-price" class="provider-price">—</div></div>
-              <div><div id="provider-change" class="provider-change">—</div><div id="provider-status" class="provider-status">Loading quote…</div></div>
-              <p class="provider-caption">Source: Finnhub. This quote is not included in the historical chart or backtests.</p>
-            </div>
-            <div class="chart-toolbar">
-              <div class="range-bar" role="group" aria-label="History range">
-                <button type="button" data-detail-range="5D">5D</button><button type="button" data-detail-range="1M">1M</button><button type="button" data-detail-range="6M">6M</button><button type="button" data-detail-range="YTD">YTD</button><button type="button" data-detail-range="1Y" class="active">1Y</button><button type="button" data-detail-range="5Y">5Y</button><button type="button" data-detail-range="ALL">All</button>
-              </div>
-              <div class="chart-mode" role="group" aria-label="Market chart view">
-                <button type="button" data-view="history" class="active" aria-pressed="true">Historical</button>
-                <button type="button" data-view="intraday" aria-pressed="false"><span class="live-dot" aria-hidden="true"></span>Live · 1m</button>
+                <h2 id="stock-title" class="company-name">Select a stock</h2>
+                <p id="stock-listing" class="listing"></p>
               </div>
             </div>
-            <p id="intraday-note" class="intraday-note" hidden>One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> update automatically when available. Exchange data may be delayed. These prices are separate from the adjusted backtest history. <a id="open-tradingview" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a></p>
-            <div class="chart-wrap history-detail-chart" id="history-detail-chart"><canvas id="history-detail-canvas" role="img" aria-label="Historical adjusted close"></canvas></div>
-            <div class="tradingview-chart" id="intraday-chart" aria-label="Live one-minute candlestick chart" hidden></div>
-            <p class="chart-foot chart-panel-heading"><span id="detail-history-caption"></span></p>
-            <div class="key-stats" aria-label="Key statistics">
-              <div><span>Previous close</span><strong id="stat-prev">—</strong></div>
-              <div><span>Day's change</span><strong id="stat-day">—</strong></div>
-              <div><span id="stat-range-label">1Y return</span><strong id="stat-range-return">—</strong></div>
-              <div><span>5Y return</span><strong id="stat-5y">—</strong></div>
-              <div class="range52"><span>52-week range</span>
-                <div class="range52-row"><strong id="fact-low">—</strong><div class="range52-track"><i id="range52-marker"></i></div><strong id="fact-high">—</strong></div>
+            <a id="open-forecast" class="action primary" href="forecast.html">Explore forecast <img src="img/markets/arrow-up-right-light.svg" width="16" height="16" alt=""></a>
+          </div>
+          <div class="snapshot-row">
+            <div class="snapshot-value">
+              <div class="source-label"><span>Latest adjusted close</span><span class="badge">Saved snapshot</span></div>
+              <div class="price-line">
+                <span id="stock-price" class="quote-price">—</span>
+                <span id="stock-change" class="quote-change mono">—</span>
+                <span id="quote-date" class="quote-asof">—</span>
               </div>
-              <div><span>All-time high</span><strong id="stat-ath">—</strong></div>
-              <div><span>Data since</span><strong id="fact-first">—</strong></div>
-              <div><span>Latest close</span><strong id="fact-last">—</strong></div>
             </div>
-            <p class="caption" id="history-caption">Adjusted closes account for splits and distributions in the saved feed. Values are not executable quotes.</p>
-          </section>
+            <div id="provider-quote" class="provider-quote" aria-live="polite">
+              <div class="quote-source"><strong>Provider quote · <span id="provider-symbol"></span></strong><span>Finnhub</span></div>
+              <p class="provider-value"><span id="provider-price">Checking latest quote…</span> <span id="provider-change" class="mono"></span></p>
+              <p class="provider-caption"><span id="provider-status"></span> May be delayed. Separate from saved history and backtests.</p>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
 
-    <p class="footer-note">Want to compare trading rules? <a href="index.html">Open the historical simulation and buy-and-hold comparison.</a></p>
-  </main>
+        <section class="price-card" aria-labelledby="chart-title">
+          <div class="chart-heading">
+            <div class="chart-title"><h3 id="chart-title">Price history</h3><span id="chart-kicker">Adjusted close · USD</span></div>
+            <div class="chart-mode" role="group" aria-label="Market chart view">
+              <button type="button" data-view="history" class="active" aria-pressed="true">Historical</button>
+              <button type="button" data-view="intraday" aria-pressed="false">Intraday · 1m</button>
+            </div>
+          </div>
+          <div id="range-row" class="range-row">
+            <div class="range-bar" role="group" aria-label="History range">
+              <button type="button" data-detail-range="5D">5D</button><button type="button" data-detail-range="1M">1M</button><button type="button" data-detail-range="6M">6M</button><button type="button" data-detail-range="YTD">YTD</button><button type="button" data-detail-range="1Y" class="active">1Y</button><button type="button" data-detail-range="5Y">5Y</button><button type="button" data-detail-range="ALL">All</button>
+            </div>
+            <div class="period-performance"><i aria-hidden="true"></i><span id="period-change" class="mono">—</span><span id="period-label">past year</span></div>
+          </div>
+          <div class="history-detail-chart" id="history-detail-chart"><canvas id="history-detail-canvas" role="img" aria-label="Historical adjusted close"></canvas></div>
+          <div class="tradingview-chart" id="intraday-chart" aria-label="One-minute candlestick chart" hidden></div>
+          <div class="chart-provenance">
+            <p id="history-provenance" class="snapshot-source"><img src="img/markets/database.svg" width="13" height="13" alt=""><span id="detail-history-caption"></span></p>
+            <p class="intraday-caveat">Intraday: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> 1-minute candles; may be delayed or require a subscription. Not used in backtests. <a id="open-tradingview" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart ↗</a></p>
+          </div>
+        </section>
+
+        <section class="snapshot-stats" aria-label="Key statistics">
+          <div class="key-stats">
+            <div><span>Previous close</span><strong id="stat-prev" class="mono">—</strong><small id="stat-prev-date">—</small></div>
+            <div><span>Day’s change</span><strong id="stat-day" class="mono">—</strong><small id="stat-day-detail">—</small></div>
+            <div><span id="stat-range-label">1Y return</span><strong id="stat-range-return" class="mono">—</strong><small id="stat-range-from">—</small></div>
+            <div><span>5Y return</span><strong id="stat-5y" class="mono">—</strong><small id="stat-5y-from">—</small></div>
+            <div><span>All-time high</span><strong id="stat-ath" class="mono">—</strong><small id="stat-ath-date">Adjusted close</small></div>
+          </div>
+          <div class="coverage-row">
+            <div class="annual-range">
+              <div class="range-labels"><span>52-week range</span><strong id="range52-label" class="mono">—</strong></div>
+              <div class="range-indicator"><i id="range52-fill"></i><img id="range52-marker" src="img/markets/range-position.svg" width="8" height="8" alt=""></div>
+            </div>
+            <div class="data-coverage"><span>Data since</span><strong id="fact-first" class="mono">—</strong></div>
+            <p>Adjusted closes account for splits and distributions in the saved feed. They are not executable quotes.</p>
+          </div>
+        </section>
+      </section>
+
+      <section id="asset-main" class="asset-panel" hidden aria-labelledby="asset-title">
+        <div class="identity-row">
+          <div class="stock-identity">
+            <div id="asset-monogram" class="monogram" aria-hidden="true">—</div>
+            <div>
+              <h2 id="asset-title" class="company-name">Loading chart…</h2>
+              <p id="asset-symbol" class="listing"></p>
+            </div>
+          </div>
+          <a id="asset-full-chart" class="action primary" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener noreferrer">Open full chart <img src="img/markets/arrow-up-right-light.svg" width="16" height="16" alt=""></a>
+        </div>
+        <section class="price-card" aria-labelledby="asset-chart-title">
+          <div class="chart-heading">
+            <div class="chart-title"><h3 id="asset-chart-title">Intraday chart</h3><span id="asset-type"></span></div>
+            <span class="badge">Chart only</span>
+          </div>
+          <div id="asset-chart" class="tradingview-chart asset-chart" aria-label="One-minute chart for selected market"></div>
+          <div class="chart-provenance">
+            <p class="intraday-caveat">One-minute candles from <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>; may be delayed or require a subscription. Gold and Bitcoin are chart-only here and are not in the stock backtests.</p>
+          </div>
+        </section>
+      </section>
+
+      <section class="backtest-cta" aria-labelledby="cta-title">
+        <div><h3 id="cta-title">Put the history to the test.</h3><p>Run a historical simulation using the saved snapshot and compare against buy-and-hold.</p></div>
+        <a class="action" href="index.html">Open Backtest lab <img src="img/markets/arrow-up-right.svg" width="16" height="16" alt=""></a>
+      </section>
+      <p class="methodology-caveat">Backtest study: <span id="study-count">20</span> stocks selected today, biasing historical comparisons upward. Past performance does not predict future returns.</p>
+    </main>
+  </div>
 </body>
 </html>
