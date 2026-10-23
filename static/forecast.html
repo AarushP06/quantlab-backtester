@@ -3,47 +3,178 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="light">
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="markets.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="quantlab.css">
   <link rel="stylesheet" href="forecast.css">
-  <link rel="stylesheet" href="theme.css">
   <title>Forecast · Quantlab</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
+  <script src="companies.js" defer></script>
   <script src="forecast.js" defer></script>
 </head>
 <body class="forecast-page">
-  <main>
+  <header class="app-header">
     <nav class="app-nav" aria-label="Main navigation">
-      <a class="brand" href="index.html">Quantlab</a>
+      <a class="brand" href="index.html"><img src="img/quantlab/quantlab-mark.svg" width="30.4708" height="30.0352" alt=""><span>Quantlab</span></a>
       <div class="nav-links"><a href="markets.html">Markets</a><a href="forecast.html" aria-current="page">Forecast</a><a href="index.html">Backtest lab</a></div>
+      <div class="workspace-context"><img src="img/quantlab/chart-no-axes-combined.svg" width="16" height="16" alt=""><span>Research workspace</span></div>
     </nav>
-    <header class="forecast-hero">
-      <div><div class="eyebrow">Historical scenarios</div><h1>Stock forecast explorer</h1><p>Explore bearish, moderate, and bullish paths from a saved market close.</p></div>
-      <a id="back-to-market" href="markets.html">View stock history →</a>
-    </header>
+    <aside class="data-notice" role="note">
+      <img src="img/quantlab/information.svg" width="14" height="14" alt="">
+      <p>Scenario paths are illustrations built from saved adjusted closes through <strong id="snapshot-date">…</strong>. They are not predictions, price targets, or live quotes.</p>
+    </aside>
+  </header>
+
+  <main class="page-main">
     <p id="forecast-status" class="status" role="status" aria-live="polite">Loading saved market data…</p>
-    <section class="surface forecast-workspace" aria-labelledby="forecast-title">
-      <div class="forecast-topline"><div><div class="eyebrow">Illustrative scenario</div><h2 id="forecast-title">Loading…</h2><p id="forecast-as-of"></p></div><div class="forecast-headline"><span id="selected-scenario-label">Moderate · 5 years</span><strong id="selected-scenario-price">—</strong><span id="selected-scenario-return">—</span></div></div>
-      <div class="forecast-controls" aria-label="Forecast chart controls">
-        <label for="forecast-symbol">Stock<select id="forecast-symbol"></select></label>
-        <label for="forecast-years">Project how many years?<input id="forecast-years" type="number" min="1" max="20" step="1" value="5" inputmode="numeric"></label>
-        <label for="forecast-view">Show scenario<select id="forecast-view"><option value="bearish">Bearish</option><option value="moderate" selected>Moderate</option><option value="bullish">Bullish</option></select></label>
-        <label for="forecast-scale">Price scale<select id="forecast-scale"><option value="logarithmic" selected>Logarithmic</option><option value="linear">Linear</option></select></label>
-        <p id="forecast-limit" class="forecast-limit"></p>
+
+    <div class="stack">
+      <div class="page-intro">
+        <div>
+          <h1>Stock forecast explorer</h1>
+          <p>Explore bearish, moderate and bullish possibilities from a stock’s saved close.</p>
+        </div>
+        <a id="back-to-market" class="action accent-text" href="markets.html">View stock history <img src="img/quantlab/arrow-up-right-15.svg" width="15" height="15" alt=""></a>
       </div>
-      <div class="range-bar" role="group" aria-label="Chart history range"><span>Past data</span><button type="button" data-extended-range="1Y">1Y</button><button type="button" data-extended-range="5Y">5Y</button><button type="button" data-extended-range="10Y" class="active">10Y</button><button type="button" data-extended-range="15Y">15Y</button><button type="button" data-extended-range="20Y">20Y</button><button type="button" data-extended-range="ALL">All</button></div>
-      <div class="chart-wrap stock-chart" id="history-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close and illustrative future price path"></canvas></div>
-      <p id="extended-history-caption" class="caption"></p>
-    </section>
-    <section class="surface forecast-panel" aria-labelledby="scenario-title">
-      <div class="forecast-heading"><div><div class="eyebrow">How the path is drawn</div><h2 id="scenario-title">Historical scenario details</h2></div></div>
-      <p>The future line follows the monthly closes of a past window with a similar total return, rescaled to the selected bearish, moderate, or bullish endpoint. Its turns and timing are illustrations, not predictions. The chart gives history its own width and uses a logarithmic price scale by default so longer horizons remain readable.</p>
-      <div class="forecast-table-wrap"><table class="forecast-table"><thead><tr><th>Horizon</th><th>Bearish</th><th>Moderate</th><th>Bullish</th></tr></thead><tbody id="forecast-body"></tbody></table></div>
-      <div class="scenario-check"><strong>Past holdout check</strong><p id="forecast-evaluation">Loading evaluation…</p></div>
-      <p id="forecast-method" class="forecast-method"></p>
-    </section>
+
+      <section class="card scenario-controls" aria-label="Forecast chart controls">
+        <label class="field symbol-field" for="forecast-symbol">Stock
+          <span class="select"><select id="forecast-symbol"></select><img src="img/quantlab/chevron-down-14.svg" width="14" height="14" alt=""></span>
+        </label>
+        <label class="field years-field" for="forecast-years"><span>Forecast horizon · 1–<span id="forecast-max-years">20</span> years</span>
+          <span class="select"><select id="forecast-years"></select><img src="img/quantlab/chevron-down-14.svg" width="14" height="14" alt=""></span>
+        </label>
+        <div class="field">
+          <span id="scenario-label">Scenario</span>
+          <div class="segmented" role="group" aria-labelledby="scenario-label">
+            <button type="button" data-scenario="bearish" aria-pressed="false">Bearish</button><button type="button" data-scenario="moderate" aria-pressed="true">Moderate</button><button type="button" data-scenario="bullish" aria-pressed="false">Bullish</button>
+          </div>
+        </div>
+        <div class="field">
+          <span id="scale-label">Price scale</span>
+          <div class="segmented" role="group" aria-labelledby="scale-label">
+            <button type="button" data-scale="logarithmic" aria-pressed="true">Logarithmic</button><button type="button" data-scale="linear" aria-pressed="false">Linear</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card forecast-chart-card" aria-labelledby="forecast-title">
+        <div class="card-heading">
+          <div class="stock-identity">
+            <div id="forecast-monogram" class="monogram" aria-hidden="true">—</div>
+            <div>
+              <h2 id="forecast-title" class="company-name">Loading…</h2>
+              <p id="forecast-listing" class="listing"></p>
+            </div>
+          </div>
+          <span id="scenario-badge" class="badge">Moderate · Illustrative scenario</span>
+        </div>
+
+        <div class="endpoint-overview">
+          <div class="headline-endpoint">
+            <span id="selected-scenario-label">Scenario endpoint</span>
+            <div><strong id="selected-scenario-price">—</strong><span id="selected-scenario-return" class="mono">—</span></div>
+          </div>
+          <div class="metric">
+            <span>From saved adjusted close</span>
+            <strong id="saved-close">—</strong>
+            <small id="forecast-as-of">—</small>
+          </div>
+          <div class="metric">
+            <span>Scenario assumption</span>
+            <strong id="scenario-annualized">—</strong>
+            <small>Annualized from the endpoint · an illustration, not an expected return</small>
+          </div>
+        </div>
+
+        <div class="range-legend">
+          <div class="segmented" role="group" aria-label="Chart history range">
+            <button type="button" data-extended-range="1Y" aria-pressed="false">1Y</button><button type="button" data-extended-range="5Y" aria-pressed="false">5Y</button><button type="button" data-extended-range="10Y" aria-pressed="true">10Y</button><button type="button" data-extended-range="15Y" aria-pressed="false">15Y</button><button type="button" data-extended-range="20Y" aria-pressed="false">20Y</button><button type="button" data-extended-range="ALL" aria-pressed="false">All</button>
+          </div>
+          <div class="legend">
+            <span><i class="history"></i>Historical adjusted close</span>
+            <span><i class="dashed"></i><span id="legend-scenario">Moderate scenario · dashed</span></span>
+          </div>
+        </div>
+
+        <div class="chart-box forecast-chart" id="history-chart"><canvas id="stock-chart" role="img" aria-label="Historical adjusted close and illustrative future price path"></canvas></div>
+        <div class="span-labels" aria-hidden="true"><span id="history-span-label">Historical context</span><span id="future-span-label" class="future">Illustrative scenario</span></div>
+
+        <p id="extended-history-caption" class="card-note"></p>
+      </section>
+    </div>
+
+    <div class="stack">
+      <div class="details-grid">
+        <section class="card" aria-labelledby="scenario-title">
+          <div class="card-heading">
+            <h2 id="scenario-title">Historical scenario details</h2>
+            <span id="details-badge" class="badge">Moderate selected</span>
+          </div>
+          <p class="card-text">The future line follows the shape of a past window of this stock with a similar total return. It does not repeat that window’s prices.</p>
+          <div class="window-facts">
+            <div class="metric"><span>Source window</span><strong id="analog-window" class="small">—</strong></div>
+            <div class="metric"><span>Source window return</span><strong id="analog-return">—</strong></div>
+            <div class="metric"><span>Rescaled scenario return</span><strong id="scenario-return">—</strong></div>
+          </div>
+          <p class="card-note"><strong>What is preserved?</strong><span id="forecast-method"></span></p>
+        </section>
+
+        <section class="card construction" aria-labelledby="construction-title">
+          <h2 id="construction-title">A historical shape, not a prediction</h2>
+          <div><h3>Find a comparable window</h3><p>Use closes from a past window of this stock with a similar total return to the chosen scenario.</p></div>
+          <div><h3>Anchor and rescale</h3><p>Start at the saved close and scale the path to the selected horizon’s scenario endpoint.</p></div>
+          <div><h3>Read the shape with care</h3><p>Turns and timing are illustrative. Scenarios have no assigned probabilities or confidence levels.</p></div>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="horizons-title">
+        <div class="card-heading">
+          <div class="titles">
+            <h2 id="horizons-title">Compare the horizons</h2>
+            <p id="horizons-subtitle">Endpoint price / total return from the same saved close. All outcomes are illustrative.</p>
+          </div>
+          <span>USD · Adjusted price</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table horizons-table">
+            <thead><tr><th scope="col">Horizon</th><th scope="col">Bearish</th><th scope="col">Moderate</th><th scope="col">Bullish</th></tr></thead>
+            <tbody id="forecast-body"></tbody>
+          </table>
+        </div>
+        <p class="table-note">Each endpoint comes from overlapping historical windows of the same length; the path between is not a smooth compound-growth line. These are possible illustrations, not valuations or recommended targets.</p>
+      </section>
+
+      <section class="card holdout" aria-labelledby="holdout-title">
+        <div class="holdout-explainer">
+          <div class="card-heading">
+            <h2 id="holdout-title">Past holdout check</h2>
+            <span id="evaluation-badge" class="badge neutral">Loading…</span>
+          </div>
+          <p class="card-text">A holdout check builds the scenario using only information available before a historical cutoff, then compares it with the later, unseen period.</p>
+        </div>
+        <div class="holdout-result">
+          <h3 id="evaluation-title">No accuracy claim</h3>
+          <p id="forecast-evaluation">Loading evaluation…</p>
+        </div>
+      </section>
+
+      <div class="continue-research">
+        <p>Explore possibilities. Test the history separately.</p>
+        <a class="text-link" href="index.html">Open Backtest lab <img src="img/quantlab/arrow-up-right.svg" width="16" height="16" alt=""></a>
+      </div>
+    </div>
   </main>
+
+  <footer class="page-footer">
+    <div class="limits">
+      <p>Research, not investment advice. Past performance does not predict future returns.</p>
+      <p>Scenario paths illustrate possibilities from saved history. They are not price targets, probabilities or predictions.</p>
+    </div>
+    <div class="context"><strong>Quantlab / Forecast</strong><span>Saved research · Illustrative scenarios</span></div>
+  </footer>
 </body>
 </html>

@@ -85,7 +85,7 @@ def test_static_entrypoint_uses_json_and_vercel_serves_static_directory():
     root = Path(__file__).resolve().parents[2]
     html = (root / "static/index.html").read_text()
     script = (root / "static/app.js").read_text()
-    styles = (root / "static/styles.css").read_text()
+    styles = (root / "static/quantlab.css").read_text()
     config = json.loads((root / "vercel.json").read_text())
 
     assert "Historical simulation" in html
@@ -98,8 +98,9 @@ def test_static_entrypoint_uses_json_and_vercel_serves_static_directory():
     assert "fetch(path)" in script
     assert 'loadJson("data/manifest.json")' in script
     assert "baseline.equity_per_dollar" in script
-    assert "prefers-color-scheme: dark" in styles
-    assert ".notice { position: sticky" in styles
+    assert "--background: #f5f6f4" in styles
+    assert 'class="data-notice" role="note"' in html
+    assert ".data-notice {" in styles
     assert "cdn.jsdelivr.net/npm/chart.js" in html
     assert config["outputDirectory"] == "static"
 

@@ -117,7 +117,7 @@ def test_market_page_and_snapshot_expose_scenarios_for_all_stocks():
     assert 'id="forecast-body"' in page
     assert 'id="history-detail-canvas"' in markets_page
     assert 'data-detail-range="1Y" class="active"' in markets_page
-    assert 'data-extended-range="10Y" class="active"' in page
+    assert 'data-extended-range="10Y" aria-pressed="true"' in page
     assert "The future line follows" in page
     assert "ghost candles" not in page
     for years in (1, 5):
