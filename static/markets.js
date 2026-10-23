@@ -23,20 +23,6 @@ const TRADINGVIEW_SYMBOLS = {
   PG: "NYSE:PG", TSLA: "NASDAQ:TSLA", UNH: "NYSE:UNH",
   V: "NYSE:V", WMT: "NASDAQ:WMT", XOM: "NYSE:XOM"
 };
-// [short name for the list, full name for the heading]
-const COMPANY_NAMES = {
-  AAPL: ["Apple", "Apple Inc."], ABBV: ["AbbVie", "AbbVie Inc."], ADBE: ["Adobe", "Adobe Inc."],
-  AMD: ["AMD", "Advanced Micro Devices"], AMZN: ["Amazon", "Amazon.com, Inc."], AVGO: ["Broadcom", "Broadcom Inc."],
-  BAC: ["Bank of America", "Bank of America Corp."], "BRK-B": ["Berkshire Hathaway", "Berkshire Hathaway Inc."],
-  COST: ["Costco", "Costco Wholesale Corp."], CRM: ["Salesforce", "Salesforce, Inc."], DIS: ["Disney", "The Walt Disney Company"],
-  GOOGL: ["Alphabet", "Alphabet Inc."], HD: ["Home Depot", "The Home Depot, Inc."], JNJ: ["Johnson & Johnson", "Johnson & Johnson"],
-  JPM: ["JPMorgan Chase", "JPMorgan Chase & Co."], KO: ["Coca-Cola", "The Coca-Cola Company"], MA: ["Mastercard", "Mastercard Inc."],
-  MCD: ["McDonald’s", "McDonald’s Corp."], META: ["Meta Platforms", "Meta Platforms, Inc."], MSFT: ["Microsoft", "Microsoft Corp."],
-  NFLX: ["Netflix", "Netflix, Inc."], NVDA: ["NVIDIA", "NVIDIA Corp."], ORCL: ["Oracle", "Oracle Corp."],
-  PEP: ["PepsiCo", "PepsiCo, Inc."], PG: ["Procter & Gamble", "The Procter & Gamble Company"], TSLA: ["Tesla", "Tesla, Inc."],
-  UNH: ["UnitedHealth", "UnitedHealth Group Inc."], V: ["Visa", "Visa Inc."], WMT: ["Walmart", "Walmart Inc."],
-  XOM: ["Exxon Mobil", "Exxon Mobil Corp."]
-};
 const OTHER_MARKETS = [
   {id: "GOLD", code: "XAU", label: "Gold", title: "Gold spot / US dollar", type: "Spot metal quote · 1-minute candles", symbol: "OANDA:XAUUSD"},
   {id: "BTC", code: "BTC", label: "Bitcoin", title: "Bitcoin / US dollar", type: "Bitstamp spot market · 1-minute candles", symbol: "BITSTAMP:BTCUSD"}
@@ -48,8 +34,6 @@ const dollars = new Intl.NumberFormat("en-US", {style: "currency", currency: "US
 const plain = new Intl.NumberFormat("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const ranges = {"1M": 1, "6M": 6, "1Y": 12, "2Y": 24, "3Y": 36, "4Y": 48, "5Y": 60, "10Y": 120};
 const signedMoney = value => Number.isFinite(value) ? `${value >= 0 ? "+" : "−"}${dollars.format(Math.abs(value))}` : "—";
-const shortName = symbol => COMPANY_NAMES[symbol]?.[0] || symbol;
-const fullName = symbol => COMPANY_NAMES[symbol]?.[1] || symbol;
 
 function money(value) { return Number.isFinite(value) ? dollars.format(value) : "—"; }
 function percent(value) { return Number.isFinite(value) ? `${value >= 0 ? "+" : "−"}${Math.abs(value * 100).toFixed(2)}%` : "—"; }
@@ -400,7 +384,7 @@ function assetRow(asset) {
 function renderList() {
   const query = byId("symbol-search").value.trim().toUpperCase();
   const matches = terms => !query || terms.some(term => term.toUpperCase().includes(query));
-  const stocks = Object.keys(market.symbols).filter(symbol => matches([symbol, ...(COMPANY_NAMES[symbol] || [])]));
+  const stocks = Object.keys(market.symbols).filter(symbol => matches([symbol, shortName(symbol), fullName(symbol)]));
   const assets = OTHER_MARKETS.filter(asset => matches([asset.id, asset.code, asset.label, asset.title]));
   const showStocks = selectedFilter !== "other" && stocks.length > 0;
   const showAssets = selectedFilter !== "stocks" && assets.length > 0;

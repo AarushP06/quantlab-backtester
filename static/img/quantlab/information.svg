@@ -1,0 +1,6 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+<mask id="stroke0_0_13" fill="white">
+<path d="M7 14C10.866 14 14 10.866 14 7C14 3.13401 10.866 0 7 0C3.13401 0 0 3.13401 0 7C0 10.866 3.13401 14 7 14Z"/>
+</mask>
+<path id="Information" d="M7 9.8H7.8V7H7H6.2V9.8H7ZM7 4.2V5H7.007V4.2V3.4H7V4.2ZM14 7H12.4C12.4 9.98234 9.98234 12.4 7 12.4V14V15.6C11.7496 15.6 15.6 11.7496 15.6 7H14ZM7 14V12.4C4.01766 12.4 1.6 9.98234 1.6 7H0H-1.6C-1.6 11.7496 2.25035 15.6 7 15.6V14ZM0 7H1.6C1.6 4.01766 4.01766 1.6 7 1.6V0V-1.6C2.25035 -1.6 -1.6 2.25035 -1.6 7H0ZM7 0V1.6C9.98234 1.6 12.4 4.01766 12.4 7H14H15.6C15.6 2.25035 11.7496 -1.6 7 -1.6V0Z" fill="#77633E" mask="url(#stroke0_0_13)"/>
+</svg>

@@ -10,8 +10,26 @@ const forecastPending = new Map();
 const byId = id => document.getElementById(id);
 const dollars = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
 const ranges = {"1Y": 12, "2Y": 24, "3Y": 36, "4Y": 48, "5Y": 60, "10Y": 120, "15Y": 180, "20Y": 240};
+const plain = new Intl.NumberFormat("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const HORIZON_ROWS = [1, 5, 10, 15, 20];
 function money(value) { return Number.isFinite(value) ? dollars.format(value) : "—"; }
-function percent(value) { return Number.isFinite(value) ? `${value >= 0 ? "+" : ""}${(value * 100).toFixed(2)}%` : "—"; }
+function percent(value) { return Number.isFinite(value) ? `${value >= 0 ? "+" : "−"}${Math.abs(value * 100).toFixed(2)}%` : "—"; }
+function capitalized(value) { return `${value[0].toUpperCase()}${value.slice(1)}`; }
+function yearsLabel(years) { return `${years} ${years === 1 ? "year" : "years"}`; }
+function displayDate(iso, options = {day: "numeric", month: "short", year: "numeric"}) {
+  return new Date(`${iso.length === 7 ? `${iso}-01` : iso}T00:00:00Z`).toLocaleDateString(options.day ? "en-GB" : "en-US", {...options, timeZone: "UTC"});
+}
+function setSigned(id, text, value) {
+  const element = byId(id);
+  element.textContent = text;
+  element.classList.toggle("positive", value > 0);
+  element.classList.toggle("negative", value < 0);
+}
+function setPressed(attribute, value) {
+  for (const button of document.querySelectorAll(`[${attribute}]`)) {
+    button.setAttribute("aria-pressed", String(button.getAttribute(attribute) === value));
+  }
+}
 function rangeStart(lastDate, range) {
   if (range === "ALL") return "0000-01-01";
   const date = new Date(`${lastDate}T00:00:00Z`);
@@ -24,13 +42,6 @@ function historyDateLabel(value, range) {
     ? {month: "short", day: "numeric", timeZone: "UTC"}
     : {year: "numeric", month: "short", timeZone: "UTC"};
   return new Date(Number(value)).toLocaleDateString("en-US", options);
-}
-
-function withAlpha(color, alpha) {
-  const hex = color.replace("#", "");
-  if (!/^[0-9a-f]{6}$/i.test(hex)) return color;
-  const [r, g, b] = [0, 2, 4].map(offset => parseInt(hex.slice(offset, offset + 2), 16));
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function chartColor(variable) {
@@ -100,7 +111,6 @@ function dailyAnalogPoints(stock, analog, candles, futureX, lastDate) {
 
 function renderChart(stock) {
   if (!window.Chart) throw new Error("Chart.js did not load from the CDN.");
-  byId("extended-history-caption").textContent = `Saved through ${stock.last_date} · future path is illustrative`;
   const scenario = stock.historical_scenarios[String(selectedForecastYears)];
   const analog = forecastPaths.get(selectedSymbol)?.[String(selectedForecastYears)]?.[selectedForecastView];
   const candles = analog?.bars || [];
@@ -117,99 +127,111 @@ function renderChart(stock) {
   const dateAtX = x => x <= split
     ? firstDate + x / split * (lastDate - firstDate)
     : lastDate + (x - split) / (1 - split) * (endDate - lastDate);
-  // Yahoo Finance style: line colored by direction over the shown range, soft gradient area underneath.
-  const historyUp = extendedValues[extendedValues.length - 1] >= extendedValues[0];
-  const historyColor = chartColor(historyUp ? "--gain" : "--loss") || chartColor("--accent");
-  const pathColor = chartColor("--forecast-mid");
-  const areaFill = (color, strength) => context => {
-    const {ctx, chartArea} = context.chart;
-    if (!chartArea) return "transparent";
-    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-    gradient.addColorStop(0, withAlpha(color, strength));
-    gradient.addColorStop(1, withAlpha(color, 0));
-    return gradient;
-  };
+  const historyYears = Math.max(1, Math.round((lastDate - firstDate) / (365.25 * 86400000)));
+  byId("history-span-label").textContent = `${yearsLabel(historyYears)} of historical context`;
+  byId("future-span-label").textContent = `${selectedForecastYears}-year illustrative scenario`;
+  byId("extended-history-caption").textContent = `Historical prices and the future scenario occupy separate spans. Changing the history range changes historical context only, not the ${selectedForecastYears}-year horizon. History is saved through ${displayDate(stock.last_date)}; turns and timing of the dashed path are illustrative, not predictions.`;
+  const historyColor = chartColor("--history-line");
+  const pathColor = chartColor("--accent");
+  const surface = chartColor("--surface");
+  const muted = chartColor("--muted");
   const datasets = [{
     label: `${selectedSymbol} history`,
     data: extendedDates.map((date, index) => ({x: historyX(Date.parse(`${date}T00:00:00Z`)), y: extendedValues[index]})),
-    borderColor: historyColor, backgroundColor: areaFill(historyColor, .28), fill: "start",
-    borderWidth: 1.75, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: historyColor,
-    pointHoverBorderColor: chartColor("--surface"), pointHoverBorderWidth: 2, tension: 0
+    borderColor: historyColor, fill: false,
+    borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: historyColor,
+    pointHoverBorderColor: surface, pointHoverBorderWidth: 2, tension: 0
   }];
+  let pathPoints = [];
   if (candles.length) {
+    pathPoints = dailyAnalogPoints(stock, analog, candles, futureX, lastDate) || [{x: split, y: stock.last_close}, ...candles.map(candle => ({
+      x: futureX(Date.parse(`${candle[0]}T00:00:00Z`)), y: candle[4]
+    }))];
     datasets.push({
-      label: `${selectedForecastView[0].toUpperCase()}${selectedForecastView.slice(1)} illustrative path`,
-      data: dailyAnalogPoints(stock, analog, candles, futureX, lastDate) || [{x: split, y: stock.last_close}, ...candles.map(candle => ({
-        x: futureX(Date.parse(`${candle[0]}T00:00:00Z`)), y: candle[4]
-      }))],
-      borderColor: chartColor("--forecast-mid"), backgroundColor: chartColor("--forecast-mid"),
+      label: `${capitalized(selectedForecastView)} illustrative path`,
+      data: pathPoints,
+      borderColor: pathColor, backgroundColor: pathColor,
       fill: false, borderDash: [6, 4],
-      borderWidth: 1.75, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: pathColor,
-      pointHoverBorderColor: chartColor("--surface"), pointHoverBorderWidth: 2, tension: 0
+      borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: pathColor,
+      pointHoverBorderColor: surface, pointHoverBorderWidth: 2, tension: 0
     });
   }
-  const yahooOverlayPlugin = {
-    id: "yahooOverlay",
+  const endpoint = pathPoints[pathPoints.length - 1];
+  const scenarioPlugin = {
+    id: "scenarioOverlay",
+    afterLayout(chart) {
+      // Keep the span captions under their halves of the plot as the chart resizes.
+      const divider = chart.scales.x.getPixelForValue(split);
+      byId("history-span-label").style.width = `${divider}px`;
+      byId("future-span-label").style.width = `${chart.chartArea.right - divider}px`;
+    },
     beforeDatasetsDraw(chart) {
       const {ctx, chartArea, scales: {x}} = chart;
       const divider = x.getPixelForValue(split);
       ctx.save();
-      ctx.strokeStyle = chartColor("--muted");
-      ctx.globalAlpha = .6;
-      ctx.setLineDash([3, 4]);
+      ctx.fillStyle = chartColor("--future-region");
+      ctx.fillRect(divider, chartArea.top, chartArea.right - divider, chartArea.bottom - chartArea.top);
+      ctx.strokeStyle = chartColor("--border-strong");
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(divider, chartArea.top);
-      ctx.lineTo(divider, chartArea.bottom);
+      ctx.moveTo(divider + .5, chartArea.top);
+      ctx.lineTo(divider + .5, chartArea.bottom);
       ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.font = "600 11px Inter, system-ui, sans-serif";
-      ctx.fillStyle = chartColor("--muted");
-      ctx.textBaseline = "top";
-      ctx.textAlign = "right";
-      ctx.fillText("HISTORY", divider - 8, chartArea.top + 6);
-      ctx.textAlign = "left";
-      ctx.fillText("ILLUSTRATIVE PATH", divider + 8, chartArea.top + 6);
       ctx.restore();
     },
     afterDatasetsDraw(chart) {
-      const {ctx, chartArea, scales: {y}} = chart;
-      const priceY = y.getPixelForValue(stock.last_close);
-      if (priceY >= chartArea.top && priceY <= chartArea.bottom) {
-        ctx.save();
-        ctx.strokeStyle = chartColor("--muted");
-        ctx.globalAlpha = .7;
-        ctx.setLineDash([2, 3]);
-        ctx.beginPath();
-        ctx.moveTo(chartArea.left, priceY);
-        ctx.lineTo(chartArea.right, priceY);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.setLineDash([]);
-        const label = money(stock.last_close);
-        ctx.font = "700 11px Inter, system-ui, sans-serif";
-        const width = ctx.measureText(label).width + 12;
-        ctx.fillStyle = historyColor;
-        ctx.beginPath();
-        ctx.roundRect(chartArea.right + 4, priceY - 10, width, 20, 4);
-        ctx.fill();
-        ctx.fillStyle = chartColor("--surface");
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(label, chartArea.right + 10, priceY + .5);
-        ctx.restore();
-      }
+      const {ctx, chartArea, scales: {x, y}} = chart;
+      const divider = x.getPixelForValue(split);
+      const closeY = y.getPixelForValue(stock.last_close);
+      ctx.save();
       const active = chart.tooltip?.getActiveElements?.() || [];
       if (active.length) {
-        const pointX = active[0].element.x;
-        ctx.save();
-        ctx.strokeStyle = chartColor("--muted");
-        ctx.globalAlpha = .55;
+        ctx.strokeStyle = muted;
+        ctx.globalAlpha = .45;
         ctx.beginPath();
-        ctx.moveTo(pointX, chartArea.top);
-        ctx.lineTo(pointX, chartArea.bottom);
+        ctx.moveTo(active[0].element.x, chartArea.top);
+        ctx.lineTo(active[0].element.x, chartArea.bottom);
         ctx.stroke();
-        ctx.restore();
+        ctx.globalAlpha = 1;
       }
+      const dot = (px, py, fill) => {
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = surface;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      };
+      dot(divider, closeY, historyColor);
+      ctx.font = "400 10px Inter, system-ui, sans-serif";
+      ctx.textBaseline = "middle";
+      const boundary = `Saved close · ${money(stock.last_close)}`;
+      const boundaryWidth = ctx.measureText(boundary).width + 18;
+      const boundaryX = Math.min(Math.max(divider - boundaryWidth / 2, chartArea.left), chartArea.right - boundaryWidth);
+      ctx.fillStyle = surface;
+      ctx.strokeStyle = chartColor("--border");
+      ctx.beginPath();
+      ctx.roundRect(boundaryX + .5, chartArea.top - 17.5, boundaryWidth, 24, 4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = chartColor("--text-secondary");
+      ctx.fillText(boundary, boundaryX + 9, chartArea.top - 5);
+      if (endpoint) {
+        const endX = x.getPixelForValue(endpoint.x);
+        const endY = y.getPixelForValue(endpoint.y);
+        dot(endX, endY, pathColor);
+        const tag = plain.format(endpoint.y);
+        ctx.font = "400 10px 'IBM Plex Mono', ui-monospace, monospace";
+        const width = ctx.measureText(tag).width + 14;
+        ctx.fillStyle = pathColor;
+        ctx.beginPath();
+        ctx.roundRect(chartArea.right + 6, endY - 11.5, width, 23, 4);
+        ctx.fill();
+        ctx.fillStyle = chartColor("--on-accent");
+        ctx.fillText(tag, chartArea.right + 13, endY + .5);
+      }
+      ctx.restore();
     }
   };
   const projectedCloses = candles.map(candle => candle[4]);
@@ -219,83 +241,118 @@ function renderChart(stock) {
   priceChart = new Chart(byId("stock-chart"), {
     type: "line",
     data: {datasets},
-    plugins: [yahooOverlayPlugin],
+    plugins: [scenarioPlugin],
     options: {
       responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
-      layout: {padding: {right: 8}},
+      layout: {padding: {top: 22}},
       interaction: {mode: "nearest", axis: "x", intersect: false},
       plugins: {
         legend: {display: false},
         tooltip: {
-          displayColors: false, backgroundColor: chartColor("--surface"), borderColor: chartColor("--border"), borderWidth: 1,
-          titleColor: chartColor("--muted"), bodyColor: chartColor("--text"), padding: 10, cornerRadius: 8,
-          titleFont: {weight: "500", size: 11}, bodyFont: {weight: "700", size: 13},
+          displayColors: false, backgroundColor: surface, borderColor: chartColor("--border"), borderWidth: 1,
+          titleColor: muted, bodyColor: chartColor("--text"), padding: 10, cornerRadius: 6,
+          titleFont: {family: "Inter", weight: "400", size: 11}, bodyFont: {family: "IBM Plex Mono", weight: "400", size: 12},
           callbacks: {
-            title: items => new Date(dateAtX(items[0].parsed.x)).toLocaleDateString("en-US", {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"}),
-            label: context => `${money(context.parsed.y)}${context.datasetIndex === 1 ? " · illustrative" : ""}`
+            title: items => new Date(dateAtX(items[0].parsed.x)).toLocaleDateString("en-GB", {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"}),
+            label: context => `${money(context.parsed.y)}${context.datasetIndex === 1 ? " · illustrative" : " · saved history"}`
           }
         }
       },
       scales: {
         x: {type: "linear", min: 0, max: 1, ticks: {
-          color: chartColor("--muted"), maxTicksLimit: 8, maxRotation: 0,
+          color: muted, font: {family: "Inter", size: 10}, maxTicksLimit: byId("history-chart").clientWidth < 520 ? 4 : 6, autoSkipPadding: 16, maxRotation: 0, padding: 8,
           callback: value => Number(value) <= split
             ? historyDateLabel(dateAtX(Number(value)), selectedExtendedRange)
             : new Date(dateAtX(Number(value))).toLocaleDateString("en-US", selectedForecastYears <= 2
               ? {year: "numeric", month: "short", timeZone: "UTC"}
               : {year: "numeric", timeZone: "UTC"})
-        }, grid: {display: false}, border: {color: chartColor("--border")}},
+        }, grid: {display: false}, border: {display: false}},
         y: {type: selectedForecastScale, position: "right", min: minimum, max: maximum, beginAtZero: false,
-          ticks: {color: chartColor("--muted"), maxTicksLimit: 7, padding: 8,
-            callback: value => Number(value).toLocaleString("en-US", {maximumFractionDigits: Number(value) < 10 ? 2 : 0})},
-          grid: {color: chartColor("--grid")}, border: {display: false, dash: [3, 3]},
-          afterFit: axis => { axis.width = Math.max(axis.width, 78); }}
+          ticks: {color: muted, font: {family: "IBM Plex Mono", size: 10}, maxTicksLimit: 7, padding: 20,
+            callback: value => plain.format(Number(value))},
+          grid: {color: chartColor("--grid")}, border: {display: false},
+          afterFit: axis => { axis.width = Math.max(axis.width, 96); }}
       }
     }
   });
 }
 
-function renderForecast(stock) {
-  const body = byId("forecast-body");
-  body.replaceChildren();
-  const maximum = maxForecastYears(stock);
-  selectedForecastYears = Math.min(selectedForecastYears, maximum);
-  byId("forecast-years").max = String(maximum);
-  byId("forecast-years").value = String(selectedForecastYears);
-  byId("forecast-limit").textContent = `Choose 1–${maximum} whole years for ${selectedSymbol}. The chart reserves space for both history and the illustrative future path. The logarithmic price scale keeps long horizons readable.`;
-  byId("forecast-as-of").textContent = `Based on ${stock.last_date} adjusted close: ${money(stock.last_close)}`;
-  byId("forecast-title").textContent = `${selectedSymbol} scenario`;
-  byId("back-to-market").href = `markets.html?symbol=${encodeURIComponent(selectedSymbol)}`;
-  const scenario = stock.historical_scenarios[String(selectedForecastYears)];
-  const outcome = scenario.outcomes[selectedForecastView];
-  byId("selected-scenario-label").textContent = `${selectedForecastView[0].toUpperCase()}${selectedForecastView.slice(1)} · ${selectedForecastYears} ${selectedForecastYears === 1 ? "year" : "years"} · to ${scenario.through_date}`;
-  byId("selected-scenario-price").textContent = money(outcome.adjusted_price);
-  byId("selected-scenario-return").textContent = `${percent(outcome.total_return)} total from saved close`;
-  const row = document.createElement("tr");
-  const horizon = document.createElement("th");
-  horizon.scope = "row";
-  horizon.textContent = `${selectedForecastYears} ${selectedForecastYears === 1 ? "year" : "years"} · to ${scenario.through_date}`;
-  row.append(horizon);
-  for (const name of ["bearish", "moderate", "bullish"]) {
-    const cell = document.createElement("td");
-    const outcome = scenario.outcomes[name];
-    const price = document.createElement("strong");
-    price.textContent = money(outcome.adjusted_price);
-    const change = document.createElement("span");
-    change.textContent = `${percent(outcome.total_return)} total`;
-    cell.append(price, change);
-    row.append(cell);
-  }
-  body.append(row);
-  const evaluation = stock.scenario_evaluation?.[String(selectedForecastYears)];
-  byId("forecast-evaluation").textContent = evaluation
-    ? `${evaluation.sample_count} yearly starting points (${evaluation.first_origin} to ${evaluation.last_origin}): median return error was ${evaluation.median_error_pp[selectedForecastView].toFixed(2)} percentage points for the ${selectedForecastView} scenario versus ${evaluation.flat_baseline_error_pp.toFixed(2)} for an unchanged-price baseline. The actual return fell between bearish and bullish in ${(evaluation.range_coverage * 100).toFixed(1)}% of checks. Multi-year checks overlap; this is not trading performance.`
-    : `Not enough completed historical periods to check the ${selectedForecastYears}-year scenario against later prices.`;
-  const analog = forecastPaths.get(selectedSymbol)?.[String(selectedForecastYears)]?.[selectedForecastView];
-  const analogText = analog ? ` The line replays daily closes from ${analog.analog_start} to ${analog.analog_end}, rescaled to the selected endpoint.` : "";
-  byId("forecast-method").textContent = `${scenario.window_count} overlapping historical ${selectedForecastYears}-year windows determine the endpoint.${analogText} The future path is illustrative, not a prediction or executable quote. The dollar amounts are adjusted-price equivalents, not future quoted share prices. Trading costs and taxes are not included.`;
+function analogReturn(stock, analog) {
+  if (!analog?.analog_start || !analog?.analog_end) return NaN;
+  let start;
+  let end;
+  stock.dates.forEach((date, index) => {
+    if (date.startsWith(analog.analog_start)) start = index;
+    if (date.startsWith(analog.analog_end)) end = index;
+  });
+  return start === undefined || end === undefined ? NaN : stock.adjusted_close[end] / stock.adjusted_close[start] - 1;
 }
 
+function scenarioCell(row, outcome) {
+  const cell = document.createElement("td");
+  cell.textContent = `${money(outcome.adjusted_price)}  /  ${percent(outcome.total_return)}`;
+  row.append(cell);
+}
+
+function renderForecast(stock) {
+  const maximum = maxForecastYears(stock);
+  selectedForecastYears = Math.min(selectedForecastYears, maximum);
+  const yearsSelect = byId("forecast-years");
+  yearsSelect.replaceChildren(...Array.from({length: maximum}, (_, index) => new Option(yearsLabel(index + 1), String(index + 1))));
+  yearsSelect.value = String(selectedForecastYears);
+  byId("forecast-max-years").textContent = String(maximum);
+  const scenarioName = capitalized(selectedForecastView);
+  byId("forecast-monogram").textContent = shortName(selectedSymbol)[0];
+  byId("forecast-title").textContent = fullName(selectedSymbol);
+  byId("forecast-listing").textContent = `${selectedSymbol}   /   ${listingExchange(selectedSymbol)}   /   ADJUSTED USD`;
+  byId("back-to-market").href = `markets.html?symbol=${encodeURIComponent(selectedSymbol)}`;
+  byId("scenario-badge").textContent = `${scenarioName} · Illustrative scenario`;
+  byId("details-badge").textContent = `${scenarioName} selected`;
+  byId("legend-scenario").textContent = `${scenarioName} scenario · dashed`;
+  const scenario = stock.historical_scenarios[String(selectedForecastYears)];
+  const outcome = scenario.outcomes[selectedForecastView];
+  byId("selected-scenario-label").textContent = `${selectedForecastYears}-year scenario endpoint · ${displayDate(scenario.through_date, {month: "long", year: "numeric"})}`;
+  byId("selected-scenario-price").textContent = money(outcome.adjusted_price);
+  setSigned("selected-scenario-return", percent(outcome.total_return), outcome.total_return);
+  byId("saved-close").textContent = money(stock.last_close);
+  byId("forecast-as-of").textContent = `${displayDate(stock.last_date)} · Saved snapshot`;
+  const annualized = (1 + outcome.total_return) ** (1 / selectedForecastYears) - 1;
+  setSigned("scenario-annualized", `${percent(annualized)} / year`, annualized);
+
+  const analog = forecastPaths.get(selectedSymbol)?.[String(selectedForecastYears)]?.[selectedForecastView];
+  const sourceReturn = analogReturn(stock, analog);
+  byId("analog-window").textContent = analog
+    ? `${displayDate(analog.analog_start, {month: "short", year: "numeric"})} – ${displayDate(analog.analog_end, {month: "short", year: "numeric"})}` : "—";
+  setSigned("analog-return", percent(sourceReturn), sourceReturn);
+  setSigned("scenario-return", percent(outcome.total_return), outcome.total_return);
+  const analogText = analog ? ` The line replays this stock’s daily closes from ${analog.analog_start} to ${analog.analog_end}, pinned to the rescaled monthly closes.` : "";
+  byId("forecast-method").textContent = `Monthly rises and falls supply a historical shape. The path is anchored at the ${money(stock.last_close)} saved close and rescaled to ${money(outcome.adjusted_price)} after ${yearsLabel(selectedForecastYears)}. ${scenario.window_count} overlapping historical ${selectedForecastYears}-year windows determine the endpoint.${analogText} Dollar amounts are adjusted-price equivalents, not future quoted share prices; trading costs and taxes are not included.`;
+
+  byId("horizons-subtitle").textContent = `Endpoint price / total return from the same ${money(stock.last_close)} saved close. All outcomes are illustrative.`;
+  const horizons = [...new Set([...HORIZON_ROWS.filter(years => years <= maximum), selectedForecastYears])].sort((left, right) => left - right);
+  const body = byId("forecast-body");
+  body.replaceChildren();
+  for (const years of horizons) {
+    const row = document.createElement("tr");
+    row.classList.toggle("selected", years === selectedForecastYears);
+    const horizon = document.createElement("th");
+    horizon.scope = "row";
+    horizon.textContent = yearsLabel(years);
+    row.append(horizon);
+    const outcomes = stock.historical_scenarios[String(years)].outcomes;
+    for (const name of ["bearish", "moderate", "bullish"]) scenarioCell(row, outcomes[name]);
+    body.append(row);
+  }
+
+  const evaluation = stock.scenario_evaluation?.[String(selectedForecastYears)];
+  const badge = byId("evaluation-badge");
+  badge.textContent = evaluation ? "Evaluation available" : "Evaluation unavailable";
+  badge.classList.toggle("neutral", !evaluation);
+  byId("evaluation-title").textContent = evaluation ? `${selectedForecastYears}-year ${selectedForecastView} scenario` : "No accuracy claim";
+  byId("forecast-evaluation").textContent = evaluation
+    ? `${evaluation.sample_count} yearly starting points (${evaluation.first_origin} to ${evaluation.last_origin}): median return error was ${evaluation.median_error_pp[selectedForecastView].toFixed(2)} percentage points for the ${selectedForecastView} scenario versus ${evaluation.flat_baseline_error_pp.toFixed(2)} for an unchanged-price baseline. The actual return fell between bearish and bullish in ${(evaluation.range_coverage * 100).toFixed(1)}% of checks. Multi-year checks overlap; this is not trading performance.`
+    : `Not enough completed historical periods to check the ${selectedForecastYears}-year scenario against later prices. A plausible-looking path is not evidence of predictive skill.`;
+}
 
 async function showStock() {
   const stock = market.symbols[selectedSymbol];
@@ -309,8 +366,12 @@ async function showStock() {
     renderForecast(stock);
     renderChart(stock);
     byId("forecast-status").textContent = `${symbol} · saved adjusted close through ${stock.last_date}.`;
+    byId("forecast-status").classList.remove("error");
   } catch (error) {
-    if (selectedSymbol === symbol) byId("forecast-status").textContent = `Unable to load forecast path: ${error.message}`;
+    if (selectedSymbol === symbol) {
+      byId("forecast-status").textContent = `Unable to load forecast path: ${error.message}`;
+      byId("forecast-status").classList.add("error");
+    }
   }
 }
 
@@ -322,7 +383,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     market = await response.json();
     const symbols = Object.keys(market.symbols);
     if (!symbols.length) throw new Error("The market snapshot has no symbols.");
-    for (const symbol of symbols) byId("forecast-symbol").add(new Option(symbol, symbol));
+    byId("snapshot-date").textContent = displayDate(market.as_of);
+    for (const symbol of symbols) byId("forecast-symbol").add(new Option(`${symbol} · ${fullName(symbol)}`, symbol));
     const requested = new URLSearchParams(window.location.search).get("symbol")?.toUpperCase();
     selectedSymbol = market.symbols[requested] ? requested : symbols[0];
     byId("forecast-symbol").addEventListener("change", () => {
@@ -333,32 +395,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       showStock();
     });
     byId("forecast-years").addEventListener("change", () => {
-      const years = Number(byId("forecast-years").value);
-      const maximum = maxForecastYears(market.symbols[selectedSymbol]);
-      if (!Number.isInteger(years) || years < 1 || years > maximum) {
-        byId("forecast-years").value = String(selectedForecastYears);
-        byId("forecast-limit").textContent = `Enter a whole number from 1 to ${maximum}.`;
-        return;
-      }
-      selectedForecastYears = years;
+      selectedForecastYears = Number(byId("forecast-years").value);
       renderForecast(market.symbols[selectedSymbol]);
       renderChart(market.symbols[selectedSymbol]);
     });
-    byId("forecast-view").addEventListener("change", () => {
-      selectedForecastView = byId("forecast-view").value;
+    for (const button of document.querySelectorAll("[data-scenario]")) button.addEventListener("click", () => {
+      selectedForecastView = button.dataset.scenario;
+      setPressed("data-scenario", selectedForecastView);
       renderForecast(market.symbols[selectedSymbol]);
       renderChart(market.symbols[selectedSymbol]);
     });
-    byId("forecast-scale").addEventListener("change", () => {
-      selectedForecastScale = byId("forecast-scale").value;
+    for (const button of document.querySelectorAll("[data-scale]")) button.addEventListener("click", () => {
+      selectedForecastScale = button.dataset.scale;
+      setPressed("data-scale", selectedForecastScale);
       renderChart(market.symbols[selectedSymbol]);
     });
     for (const button of document.querySelectorAll("[data-extended-range]")) button.addEventListener("click", () => {
       selectedExtendedRange = button.dataset.extendedRange;
-      for (const item of document.querySelectorAll("[data-extended-range]")) item.classList.toggle("active", item === button);
+      setPressed("data-extended-range", selectedExtendedRange);
       renderChart(market.symbols[selectedSymbol]);
     });
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => renderChart(market.symbols[selectedSymbol]));
+    // Canvas text needs the web fonts before the first chart draw.
+    await document.fonts?.ready?.catch(() => {});
     await showStock();
   } catch (error) {
     status.textContent = `Unable to display forecast data: ${error.message}`;

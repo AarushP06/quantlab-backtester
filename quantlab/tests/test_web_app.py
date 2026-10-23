@@ -83,12 +83,13 @@ def test_static_pages_serve_the_shared_theme(tmp_path):
     path, _dates = cached_prices(tmp_path)
     client = create_app(path).test_client()
 
-    theme = client.get("/theme.css")
+    theme = client.get("/quantlab.css")
     assert theme.status_code == 200
-    for variable in (b"--gain:", b"--loss:", b"--forecast-mid:",
-                     b"--forecast-down:", b"--accent:"):
+    for variable in (b"--gain:", b"--loss:", b"--accent:", b"--muted:",
+                     b"--baseline-line:", b"prefers-color-scheme: dark"):
         assert variable in theme.data
     for page in ("index.html", "markets.html", "forecast.html"):
         response = client.get(f"/{page}")
         assert response.status_code == 200
-        assert b'href="theme.css"' in response.data
+        assert b'href="quantlab.css"' in response.data
+        assert b'aria-label="Main navigation"' in response.data

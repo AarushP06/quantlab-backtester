@@ -5,128 +5,222 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="theme.css">
-  <title>Historical simulation · Quantlab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="quantlab.css">
+  <link rel="stylesheet" href="backtest.css">
+  <title>Backtest lab · Quantlab</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
   <script src="app.js" defer></script>
 </head>
-<body>
-  <main>
+<body class="backtest-page">
+  <header class="app-header">
     <nav class="app-nav" aria-label="Main navigation">
-      <a class="brand" href="index.html">Quantlab</a>
+      <a class="brand" href="index.html"><img src="img/quantlab/quantlab-mark.svg" width="30.4708" height="30.0352" alt=""><span>Quantlab</span></a>
       <div class="nav-links"><a href="markets.html">Markets</a><a href="forecast.html">Forecast</a><a href="index.html" aria-current="page">Backtest lab</a></div>
+      <div class="workspace-context"><img src="img/quantlab/chart-no-axes-combined.svg" width="16" height="16" alt=""><span>Research workspace</span></div>
     </nav>
-    <header class="hero">
-      <div>
-        <div class="eyebrow">Quantlab / historical backtests</div>
-        <h1>Historical simulation</h1>
-        <p>Compare a strategy with buy-and-hold across saved market history. Signals use each bar's information and execute at the next bar's open. These controls select precomputed results; no backtest runs in the browser.</p>
-      </div>
-      <div class="hero-meta">2005–2026 adjusted US equity data<br>20 selected large-cap symbols<br>0 and 5 bps trading costs</div>
-    </header>
+    <aside class="data-notice" role="note">
+      <img src="img/quantlab/information.svg" width="14" height="14" alt="">
+      <p>Historical simulations from saved, precomputed results on adjusted daily data<span id="notice-range"></span>. They are not live trading results, forecasts or investment advice.</p>
+    </aside>
+  </header>
 
-    <aside class="notice" role="note">Past performance does not predict future returns. This universe contains 20 large caps selected today, which biases results upward.</aside>
-
-    <section class="surface toolbar" aria-label="Comparison settings">
-      <label for="strategy">Strategy<select id="strategy"></select></label>
-      <label for="baseline">Buy-and-hold baseline<select id="baseline"></select><span id="baseline-help" class="control-help"></span></label>
-      <label for="cost">Trading costs<select id="cost"></select></label>
-    </section>
+  <main class="page-main">
     <p id="data-status" class="status" role="status" aria-live="polite">Loading historical results…</p>
 
-    <section class="surface section verdict" aria-labelledby="verdict-heading">
-      <div class="section-head">
-        <div><div class="eyebrow">Out-of-sample record</div><h2 id="verdict-heading">Strategy versus buy-and-hold</h2></div>
-        <p>Each test year starts a new portfolio. The 2026 test year is partial.</p>
-      </div>
-      <p id="verdict-line" class="verdict-line">Loading fold comparison…</p>
-      <div class="verdict-grid">
-        <div><span>Test years ahead</span><strong id="verdict-wins">—</strong></div>
-        <div><span>Average test-fold CAGR gap</span><strong id="verdict-gap">—</strong></div>
-        <div><span>Average max drawdown gap</span><strong id="verdict-drawdown">—</strong></div>
-      </div>
-      <p class="caption">Gaps are strategy minus the selected baseline, in percentage points. A positive drawdown gap means a shallower drawdown. These are simple averages, not compounded returns.</p>
-    </section>
-
-    <section class="surface section" aria-labelledby="sim-heading">
-      <div class="section-head">
+    <div class="stack">
+      <div class="page-intro">
         <div>
-          <div class="eyebrow">Invest a hypothetical amount</div>
-          <h2 id="sim-heading">Investment simulator</h2>
+          <h1>Backtest lab</h1>
+          <p>Compare a strategy with buy-and-hold. Examine the history, then look beyond the headline return.</p>
         </div>
-        <p>Each calendar window starts a new portfolio and includes the selected end year.</p>
+        <span class="badge">Saved results · No browser backtest</span>
       </div>
-      <div class="sim-grid">
-        <div class="sim-inputs">
-          <h3>Historical window</h3>
-          <label for="sim-amount">Starting amount (USD)<input id="sim-amount" type="number" min="0.01" max="1000000000000" step="0.01" inputmode="decimal" value="10000"></label>
-          <label for="sim-horizon">Horizon<select id="sim-horizon"></select></label>
-          <label for="sim-start">Start year<select id="sim-start"></select></label>
+
+      <section class="card study-controls" aria-label="Comparison settings">
+        <label class="field strategy-field" for="strategy">Strategy
+          <span class="select"><select id="strategy"></select><img src="img/quantlab/chevron-down-14.svg" width="14" height="14" alt=""></span>
+        </label>
+        <label class="field strategy-field" for="baseline">Buy-and-hold baseline
+          <span class="select"><select id="baseline" aria-describedby="baseline-help"></select><img src="img/quantlab/chevron-down-14.svg" width="14" height="14" alt=""></span>
+        </label>
+        <div class="field">
+          <span id="cost-label">Trading costs</span>
+          <div id="cost" class="segmented" role="group" aria-labelledby="cost-label"></div>
         </div>
-        <div class="comparison" aria-label="Strategy and buy-and-hold outcomes">
-          <article id="sim-strategy-card" class="outcome">
-            <h3 id="sim-strategy-name">Strategy</h3>
-            <div id="sim-strategy-final" class="value">—</div>
-            <div class="value-label">Final historical value</div>
-            <dl class="metric-pairs">
-              <dt>Total return</dt><dd id="sim-strategy-return">—</dd>
-              <dt>CAGR</dt><dd id="sim-strategy-cagr">—</dd>
-              <dt>Max drawdown</dt><dd id="sim-strategy-drawdown">—</dd>
-            </dl>
-          </article>
-          <article id="sim-baseline-card" class="outcome baseline">
-            <h3 id="sim-baseline-name">Buy and hold</h3>
-            <div id="sim-baseline-final" class="value">—</div>
-            <div class="value-label">Final historical value</div>
-            <dl class="metric-pairs">
-              <dt>Total return</dt><dd id="sim-baseline-return">—</dd>
-              <dt>CAGR</dt><dd id="sim-baseline-cagr">—</dd>
-              <dt>Max drawdown</dt><dd id="sim-baseline-drawdown">—</dd>
-            </dl>
-          </article>
+        <div class="cost-context">
+          <p>Per executed trade</p>
+          <p>Applied in these saved results</p>
         </div>
+        <p id="baseline-help" class="field-help baseline-help"></p>
+      </section>
+
+      <div class="study-facts">
+        <div><strong id="fact-years">—</strong><span>Adjusted US equity data</span></div>
+        <div><strong id="fact-universe">—</strong><span>Selected today · Upward selection bias</span></div>
+        <div><strong>Next bar open</strong><span>Signals use current-bar information</span></div>
+        <div><strong>Precomputed only</strong><span>No strategy execution in the browser</span></div>
+      </div>
+
+      <section class="card" aria-labelledby="verdict-heading">
+        <div class="card-heading">
+          <h2 id="verdict-heading">Out-of-sample overview</h2>
+          <span id="verdict-range">Test folds</span>
+        </div>
+        <p id="verdict-line" class="verdict-line">Loading fold comparison…</p>
+        <div class="research-metrics">
+          <div class="metric"><span>Test years ahead of the baseline</span><strong id="verdict-wins">—</strong><small>Positive strategy-minus-baseline CAGR gaps</small></div>
+          <div class="metric"><span>Average test-fold CAGR gap</span><strong id="verdict-gap">—</strong><small>Arithmetic average across all test folds</small></div>
+          <div class="metric"><span>Average max drawdown gap</span><strong id="verdict-drawdown">—</strong><small>Positive means a shallower strategy drawdown</small></div>
+        </div>
+        <p id="verdict-note" class="card-note">Each test year restarts the portfolio. Gaps are strategy minus baseline in percentage points; fold averages are not compounded.</p>
+      </section>
+    </div>
+
+    <section class="stack" aria-labelledby="sim-heading">
+      <div class="section-heading">
+        <p class="eyebrow">01 / A HISTORICAL INVESTMENT</p>
+        <h2 id="sim-heading">Investment simulator</h2>
+        <p>What would the same starting amount have become over a fresh historical calendar window? This is not a forecast.</p>
+      </div>
+
+      <div class="card simulator-controls">
+        <label class="field amount-field" for="sim-amount">Starting amount · USD
+          <input id="sim-amount" type="number" min="0.01" max="1000000000000" step="0.01" inputmode="decimal" value="10000">
+        </label>
+        <label class="field horizon-field" for="sim-horizon">Horizon
+          <span class="select"><select id="sim-horizon"></select><img src="img/quantlab/chevron-down-14.svg" width="14" height="14" alt=""></span>
+        </label>
+        <label class="field start-field" for="sim-start">Start year
+          <span class="select"><select id="sim-start"></select><img src="img/quantlab/chevron-down-14.svg" width="14" height="14" alt=""></span>
+        </label>
+        <div class="resolved-window">
+          <span>Fresh calendar window · End year included</span>
+          <strong id="sim-window" class="mono">—</strong>
+          <small id="sim-status" role="status" aria-live="polite">One continuous investment, not a compounded set of test folds</small>
+        </div>
+      </div>
+
+      <div class="outcomes" aria-label="Strategy and buy-and-hold outcomes">
+        <article id="sim-strategy-card" class="card outcome">
+          <div class="outcome-heading"><span><i class="series-key"></i><strong id="sim-strategy-name">Strategy</strong></span><span class="cost-tag"></span></div>
+          <div class="final-value"><span class="final-label">Final value</span><strong id="sim-strategy-final">—</strong></div>
+          <dl class="outcome-metrics">
+            <div><dt>Total return</dt><dd id="sim-strategy-return">—</dd></div>
+            <div><dt>CAGR</dt><dd id="sim-strategy-cagr">—</dd></div>
+            <div><dt>Max drawdown</dt><dd id="sim-strategy-drawdown">—</dd></div>
+          </dl>
+        </article>
+        <article id="sim-baseline-card" class="card outcome baseline">
+          <div class="outcome-heading"><span><i class="series-key baseline"></i><strong id="sim-baseline-name">Buy and hold</strong></span><span class="cost-tag"></span></div>
+          <div class="final-value"><span class="final-label">Final value</span><strong id="sim-baseline-final">—</strong></div>
+          <dl class="outcome-metrics">
+            <div><dt>Total return</dt><dd id="sim-baseline-return">—</dd></div>
+            <div><dt>CAGR</dt><dd id="sim-baseline-cagr">—</dd></div>
+            <div><dt>Max drawdown</dt><dd id="sim-baseline-drawdown">—</dd></div>
+          </dl>
+        </article>
       </div>
       <p id="sim-difference" class="sim-difference" aria-live="polite"></p>
-      <p id="sim-status" class="status" role="status" aria-live="polite"></p>
-      <div class="chart-wrap"><canvas id="sim-chart" role="img" aria-label="Historical strategy and buy-and-hold equity curves for the entered amount"></canvas></div>
-      <p class="caption">Both lines use the same starting amount and the same dates. Values scale a fresh-window backtest; they are historical simulations, not forecasts.</p>
+
+      <section class="card" aria-labelledby="sim-chart-title">
+        <div class="card-heading">
+          <div class="titles"><h3 id="sim-chart-title" class="small">The same investment, side by side</h3><p id="sim-chart-subtitle">—</p></div>
+          <div class="legend"><span><i></i><span id="sim-legend-strategy">Strategy</span></span><span><i class="baseline"></i><span id="sim-legend-baseline">Buy-and-hold</span></span></div>
+        </div>
+        <div class="chart-box equity-chart"><canvas id="sim-chart" role="img" aria-label="Historical strategy and buy-and-hold equity curves for the entered amount"></canvas></div>
+        <p class="card-note">Historical simulation only. Starting amount and dates match across both series. This simulator window is separate from the individually restarted test-year folds below.</p>
+      </section>
     </section>
 
-    <section class="surface section" aria-labelledby="explorer-heading">
-      <div class="section-head">
-        <div>
-          <div class="eyebrow">Precomputed record</div>
-          <h2 id="explorer-heading">Full period &amp; walk-forward folds</h2>
-        </div>
-        <p>Three training years followed by one test year; 2026 is partial.</p>
+    <section class="stack" aria-labelledby="explorer-heading">
+      <div class="section-heading">
+        <p class="eyebrow">02 / LOOK INSIDE THE RESULTS</p>
+        <h2 id="explorer-heading">Full period &amp; walk-forward folds</h2>
+        <p>Separate a continuous full-period investment from annual out-of-sample tests. Inspect the years behind the average.</p>
       </div>
-      <h3>Strategy return minus buy-and-hold, by test year</h3>
-      <p class="caption fold-hint">Select a bar or table row to inspect that year's equity curves and metrics below. Positive bars mean the strategy finished ahead.</p>
-      <div class="chart-wrap fold-chart"><canvas id="fold-chart" role="img" aria-label="Strategy minus buy-and-hold CAGR by test year"></canvas></div>
-      <label class="period-control" for="period">Chart period<select id="period"></select></label>
-      <div class="chart-wrap explorer"><canvas id="period-chart" role="img" aria-label="Selected period strategy and buy-and-hold equity curves"></canvas></div>
-      <p class="caption">The full-period chart runs continuously. Each test fold starts afresh with $100,000.</p>
 
-      <div class="tables-grid">
-        <div>
-          <h3>Selected period metrics</h3>
-          <div class="table-wrap"><table>
-            <thead><tr><th>Metric</th><th id="period-strategy-heading">Strategy</th><th id="period-baseline-heading">Buy and hold</th></tr></thead>
+      <div class="card walk-forward">
+        <div class="method-summary">
+          <h3>3 training years → 1 test year</h3>
+          <p>Move forward one year at a time. Each test fold starts fresh at $100,000; its training period comes strictly before the test year.</p>
+        </div>
+        <div id="fold-timeline" class="fold-timeline" aria-label="Selected fold timeline"></div>
+      </div>
+
+      <section class="card" aria-labelledby="fold-chart-title">
+        <div class="card-heading">
+          <div class="titles"><h3 id="fold-chart-title" class="small">Strategy minus baseline, by test year</h3><p>CAGR difference · Percentage points · Above zero favors the strategy · Select a bar to inspect that year</p></div>
+          <span id="fold-badge" class="badge">—</span>
+        </div>
+        <div class="chart-box fold-chart"><canvas id="fold-chart" role="img" aria-label="Strategy minus buy-and-hold CAGR by test year"></canvas></div>
+        <p id="partial-note" class="table-note"></p>
+      </section>
+
+      <section class="card" aria-labelledby="period-title">
+        <div class="period-controls">
+          <div class="titles"><h3 id="period-title">Explore the equity curves</h3><p id="period-subtitle">—</p></div>
+          <div class="field">
+            <span id="period-mode-label">Chart period</span>
+            <div class="segmented" role="group" aria-labelledby="period-mode-label">
+              <button type="button" data-period-mode="full" aria-pressed="false" id="period-mode-full">Full period</button><button type="button" data-period-mode="fold" aria-pressed="true">Test fold</button>
+            </div>
+          </div>
+          <label class="field test-year-field" for="period">Test year
+            <span class="select"><select id="period"></select><img src="img/quantlab/chevron-down-14.svg" width="14" height="14" alt=""></span>
+          </label>
+        </div>
+        <div class="normalization">
+          <p id="period-normalization">—</p>
+          <div class="legend"><span><i></i><span id="period-legend-strategy">Strategy</span></span><span><i class="baseline"></i><span id="period-legend-baseline">Buy-and-hold</span></span></div>
+        </div>
+        <div class="chart-box equity-chart"><canvas id="period-chart" role="img" aria-label="Selected period strategy and buy-and-hold equity curves"></canvas></div>
+        <p class="card-note"><strong>Two views, different starting rules</strong>The full period holds one continuous portfolio from the first saved bar through the latest, initially funded with $100,000. Test folds restart at $100,000 each year after 3 training years. Neither view is the simulator window above.</p>
+      </section>
+
+      <section class="card" aria-labelledby="metrics-title">
+        <div class="card-heading">
+          <h3 id="metrics-title">Selected period metrics</h3>
+          <span id="metrics-context">—</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table metrics-table">
+            <thead><tr><th scope="col">Metric</th><th scope="col" id="period-strategy-heading">Strategy</th><th scope="col" id="period-baseline-heading">Buy and hold</th><th scope="col">Strategy − baseline</th></tr></thead>
             <tbody id="period-metrics-body"></tbody>
-          </table></div>
+          </table>
         </div>
-        <div>
-          <h3>All test folds · selected cost level</h3>
-          <div class="table-wrap"><table>
-            <thead><tr><th>Test year</th><th>Strategy CAGR</th><th>Baseline CAGR</th><th>Difference</th><th>Strategy Sharpe</th><th>Baseline Sharpe</th><th>Strategy MaxDD</th><th>Baseline MaxDD</th></tr></thead>
+        <p id="drawdown-note" class="table-note"></p>
+      </section>
+
+      <section class="card" aria-labelledby="folds-title">
+        <div class="card-heading">
+          <div class="titles"><h3 id="folds-title">All test folds</h3><p>One year per row · 3 prior training years · Same strategy, baseline and costs · Select a row to inspect it</p></div>
+          <span id="folds-badge" class="badge neutral">—</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table compact folds-table">
+            <thead><tr><th scope="col">Test year</th><th scope="col">Strategy CAGR</th><th scope="col">Baseline CAGR</th><th scope="col">Difference · pp</th><th scope="col">Strategy Sharpe</th><th scope="col">Baseline Sharpe</th><th scope="col">Strategy MaxDD</th><th scope="col">Baseline MaxDD</th></tr></thead>
             <tbody id="folds-body"></tbody>
-          </table></div>
+          </table>
         </div>
+        <p id="folds-note" class="table-note"></p>
+      </section>
+
+      <div class="study-limits">
+        <h3>Read the study with its limits</h3>
+        <p id="study-limits-text">The universe contains 20 large caps selected today, creating upward selection bias in historical comparisons. Signals use information from the current bar and execute at the next bar’s open; adjusted historical prices are not executable quotes.</p>
       </div>
     </section>
-
-    <p class="footer-note">For arbitrary date ranges, use the separate Flask app locally. The static site reads only saved JSON files and Chart.js from a CDN.</p>
   </main>
+
+  <footer class="page-footer">
+    <div class="limits">
+      <p>Research, not investment advice. Past performance does not predict future returns.</p>
+      <p>This site uses saved, precomputed results. Arbitrary date ranges require the local Flask app; no backtest runs in your browser.</p>
+    </div>
+    <div class="context"><strong>Quantlab / Backtest lab</strong><span>Saved research · Historical simulations</span></div>
+  </footer>
 </body>
 </html>

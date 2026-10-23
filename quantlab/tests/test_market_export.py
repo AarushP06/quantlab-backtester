@@ -87,13 +87,16 @@ def test_other_markets_are_labeled_chart_only_and_outside_stock_snapshot():
     snapshot = json.loads((root / "static/data/market.json").read_text())
 
     assert 'id="asset-chart"' in page
-    assert 'class="asset-workspace"' in page
-    assert 'class="asset-sidebar"' in page
+    assert 'class="market-browser"' in page
+    assert 'id="asset-main"' in page
     assert 'id="stock-main"' in page
-    assert page.count('class="surface asset-panel"') == 1
+    assert page.count('id="asset-chart"') == 1
     assert 'class="market-layout"' not in page
-    # Stocks, gold, and Bitcoin share one searchable list instead of separate categories.
+    # Stocks, gold, and Bitcoin share one search and filter panel in the market browser.
+    assert page.count('id="symbol-search"') == 1
     assert page.count('id="symbol-list"') == 1
+    panel = page[page.index('id="market-picker-panel"'):page.index('id="list-empty"')]
+    assert 'id="symbol-list"' in panel and 'id="other-list"' in panel
     assert page.index('id="symbol-list"') < page.index('id="asset-chart"')
     for removed in ('id="asset-list"', 'id="assets-toggle"', 'id="stocks-toggle"', 'id="stock-picker"'):
         assert removed not in page

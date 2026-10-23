@@ -1,0 +1,107 @@
+/* Backtest lab — layout on top of quantlab.css (Figma "Quantlab · Backtest lab"). */
+.study-controls { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 16px 28px; }
+.strategy-field { width: 420px; }
+.cost-context { display: flex; flex: 1; flex-direction: column; gap: 6px; min-width: 160px; padding-bottom: 7px; font-size: 11px; }
+.cost-context p:first-child { color: var(--text-secondary); }
+.cost-context p:last-child { color: var(--muted); font-size: 10px; }
+.baseline-help { flex-basis: 100%; margin-top: -6px; }
+
+.study-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 28px; padding: 2px; }
+.study-facts div { display: flex; flex-direction: column; gap: 7px; }
+.study-facts strong { font-size: 13px; font-weight: 500; }
+.study-facts span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+.verdict-line { margin-top: -8px; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.research-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 48px; }
+.research-metrics .metric { gap: 9px; }
+.research-metrics .metric > strong { font-size: 27px; }
+
+.simulator-controls { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 20px 24px; }
+.amount-field, .horizon-field { width: 225px; }
+.start-field { width: 190px; }
+.resolved-window { display: flex; flex: 1; flex-direction: column; gap: 8px; min-width: 260px; padding-left: 24px; border-left: 1px solid var(--border); }
+.resolved-window span, .resolved-window small { color: var(--muted); font-size: 11px; }
+.resolved-window small { font-size: 10px; line-height: 1.5; }
+.resolved-window small.error { color: var(--loss); font-weight: 500; }
+.resolved-window strong { font-size: 15px; }
+
+.outcomes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.outcome { gap: 19px; }
+.outcome-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.outcome-heading > span:first-child { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.outcome-heading strong { font-size: 13px; font-weight: 600; }
+.cost-tag { color: var(--muted); font-size: 10px; }
+.final-value { display: flex; flex-direction: column; gap: 7px; }
+.final-label { color: var(--muted); font-size: 11px; }
+.final-value strong { font-family: var(--mono); font-size: 33px; font-weight: 400; overflow-wrap: anywhere; }
+.outcome.winner .final-value strong { color: var(--accent); }
+.outcome-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 24px; padding-top: 17px; border-top: 1px solid var(--border); }
+.outcome-metrics div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.outcome-metrics dt { color: var(--muted); font-size: 10px; }
+.outcome-metrics dd { font-family: var(--mono); font-size: 17px; white-space: nowrap; }
+.sim-difference { margin-top: -8px; color: var(--text-secondary); font-size: 12px; }
+.sim-difference:empty { display: none; }
+
+.equity-chart { height: 310px; }
+.fold-chart { height: 252px; }
+
+.walk-forward { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 20px 48px; }
+.method-summary { display: flex; flex-direction: column; gap: 10px; flex: 0 1 540px; min-width: 0; }
+.method-summary h3 { font-size: 15px; font-weight: 600; }
+.method-summary p { color: var(--muted); font-size: 11px; line-height: 1.7; }
+.fold-timeline { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 280px; }
+.fold-timeline > div { display: flex; flex: 1; flex-direction: column; gap: 7px; min-width: 0; padding: 14px; border-radius: var(--radius); background: var(--surface-muted); }
+.fold-timeline strong { color: var(--text-secondary); font-family: var(--mono); font-size: 15px; font-weight: 400; }
+.fold-timeline span { color: var(--muted); font-size: 10px; }
+.fold-timeline .arrow { color: var(--muted); font-size: 20px; }
+.fold-timeline > div.test { background: var(--accent-soft); }
+.fold-timeline > div.test strong, .fold-timeline > div.test span { color: var(--accent); }
+
+.period-controls { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; }
+.period-controls .titles { display: flex; flex: 1; flex-direction: column; gap: 7px; min-width: 240px; }
+.period-controls h3 { font-size: 17px; font-weight: 600; }
+.period-controls p { color: var(--muted); font-size: 11px; }
+.test-year-field { width: 142px; }
+.normalization { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; padding: 12px 14px; border-radius: var(--radius); background: var(--surface-muted); }
+.normalization p { color: var(--text-secondary); font-size: 11px; }
+
+.metrics-table th:first-child { width: 300px; }
+.folds-table td, .folds-table thead th:not(:first-child) { width: 12.5%; }
+.folds-table tbody tr { cursor: pointer; }
+.folds-table tbody tr:hover { background: var(--surface-muted); }
+.folds-table tbody tr.selected:hover { background: var(--accent-soft); }
+.fold-link { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; cursor: pointer; }
+.fold-link:hover { text-decoration-color: currentColor; }
+
+.study-limits { display: flex; flex-direction: column; gap: 10px; padding: 2px; }
+.study-limits h3 { color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.study-limits p { color: var(--muted); font-size: 11px; line-height: 1.7; }
+
+@media (max-width: 1100px) {
+  .strategy-field { width: auto; flex: 1 1 300px; }
+  .study-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .resolved-window { flex-basis: 100%; padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--border); }
+}
+@media (max-width: 900px) {
+  .outcomes { grid-template-columns: minmax(0, 1fr); }
+  .research-metrics { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .method-summary { flex-basis: 100%; }
+}
+@media (max-width: 640px) {
+  .study-controls, .simulator-controls { flex-direction: column; align-items: stretch; }
+  .strategy-field, .amount-field, .horizon-field, .start-field, .test-year-field { flex: none; width: 100%; }
+  .cost-context { padding-bottom: 0; }
+  .study-facts { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .research-metrics .metric > strong { font-size: 24px; }
+  .final-value strong { font-size: 28px; }
+  .outcome-metrics dd { font-size: 15px; }
+  .equity-chart { height: 260px; }
+  .fold-chart { height: 220px; }
+  .fold-timeline { min-width: 0; width: 100%; gap: 6px; }
+  .fold-timeline > div { padding: 10px 8px; }
+  .fold-timeline strong { font-size: 13px; }
+  .period-controls { flex-direction: column; align-items: stretch; }
+  .period-controls .field { width: 100%; }
+  .metrics-table th:first-child { width: auto; }
+  .folds-table { min-width: 760px; }
+}

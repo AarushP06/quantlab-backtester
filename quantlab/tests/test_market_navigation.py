@@ -22,11 +22,14 @@ def test_market_picker_is_collapsible_and_scrollable():
     page = (root / "markets.html").read_text()
     script = (root / "markets.js").read_text()
     style = (root / "markets.css").read_text()
+    browser_rule = next(line for line in style.splitlines() if line.startswith(".market-browser {"))
 
     assert 'id="market-picker-toggle"' in page
     assert 'id="market-picker-panel"' in page
     assert 'aria-expanded="false"' in page
     assert 'id="symbol-search"' in page
     assert 'id="symbol-list"' in page
-    assert 'max-height: min(50vh, 390px); overflow-y: auto' in style
+    # Desktop: the browser column scrolls within the viewport. Narrow screens: the stock list scrolls.
+    assert "max-height: 100vh" in browser_rule and "overflow-y: auto" in browser_rule
+    assert ".stock-list { max-height: 420px; overflow-y: auto; }" in style
     assert 'event.key === "Escape"' in script
