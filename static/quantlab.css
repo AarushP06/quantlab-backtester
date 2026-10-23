@@ -32,35 +32,6 @@
   --radius-sm: 4px;
 }
 
-/* Not in Figma: dark tokens keep the existing dark-mode support at AA contrast. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --background: #111714;
-    --surface: #18201b;
-    --surface-muted: #1d2620;
-    --text: #e8ede9;
-    --text-secondary: #b5c0b8;
-    --muted: #8d9891;
-    --border: #2c3830;
-    --border-strong: #6b776f;
-    --grid: #243029;
-    --accent: #5fc29d;
-    --accent-soft: rgba(95, 194, 157, .14);
-    --action-bg: #1d7356;
-    --on-accent: #0f1a14;
-    --gain: #5fc29d;
-    --loss: #e48c86;
-    --notice-bg: #29251a;
-    --notice-text: #d9c493;
-    --history-line: #b5c0b8;
-    --baseline-line: #8d9891;
-    --bar-positive: #4f9178;
-    --bar-negative: #b07a74;
-    --future-region: rgba(95, 194, 157, .07);
-  }
-}
-
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--background); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; overflow-x: clip; }
 h1, h2, h3, p, dl, dd { margin: 0; }

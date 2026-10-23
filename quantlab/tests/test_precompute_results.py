@@ -98,7 +98,7 @@ def test_static_entrypoint_uses_json_and_vercel_serves_static_directory():
     assert "fetch(path)" in script
     assert 'loadJson("data/manifest.json")' in script
     assert "baseline.equity_per_dollar" in script
-    assert "prefers-color-scheme: dark" in styles
+    assert "--background: #f5f6f4" in styles
     assert 'class="data-notice" role="note"' in html
     assert ".data-notice {" in styles
     assert "cdn.jsdelivr.net/npm/chart.js" in html

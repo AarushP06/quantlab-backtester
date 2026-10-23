@@ -249,7 +249,7 @@ function mountTradingView(target, symbol) {
   script.async = true;
   script.textContent = JSON.stringify({
     autosize: true, symbol, interval: "1", timezone: "America/New_York",
-    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+    theme: "light",
     style: "1", locale: "en", allow_symbol_change: false,
     hide_side_toolbar: true, hide_top_toolbar: false, hide_legend: false,
     hide_volume: false, withdateranges: false, calendar: false,
@@ -516,10 +516,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderChart(market.symbols[selectedSymbol]);
       });
     }
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      if (selectedMarketKind === "stock") renderStock();
-      else renderAsset();
-    });
     window.setInterval(() => {
       if (selectedMarketKind === "stock") refreshProviderQuote();
     }, 60000);

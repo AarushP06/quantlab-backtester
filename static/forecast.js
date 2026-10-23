@@ -415,7 +415,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       setPressed("data-extended-range", selectedExtendedRange);
       renderChart(market.symbols[selectedSymbol]);
     });
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => renderChart(market.symbols[selectedSymbol]));
     // Canvas text needs the web fonts before the first chart draw.
     await document.fonts?.ready?.catch(() => {});
     await showStock();

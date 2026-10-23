@@ -86,7 +86,7 @@ def test_static_pages_serve_the_shared_theme(tmp_path):
     theme = client.get("/quantlab.css")
     assert theme.status_code == 200
     for variable in (b"--gain:", b"--loss:", b"--accent:", b"--muted:",
-                     b"--baseline-line:", b"prefers-color-scheme: dark"):
+                     b"--baseline-line:", b"--background: #f5f6f4"):
         assert variable in theme.data
     for page in ("index.html", "markets.html", "forecast.html"):
         response = client.get(f"/{page}")

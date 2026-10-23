@@ -642,8 +642,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       updateStartYears(byId("sim-start").value);
       render();
     });
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    media.addEventListener("change", render);
     // Canvas text needs the web fonts before the first chart draw.
     await document.fonts?.ready?.catch(() => {});
     await render();
